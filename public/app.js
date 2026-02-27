@@ -4,6 +4,8 @@
 const App = {
   user:            null,
   duration:        10,
+  mood:            'peaceful',
+  includeMusic:    false,
   meditationData:  null,
   _bgCanvas:       null,
   _medCanvas:      null,
@@ -123,6 +125,8 @@ const App = {
     document.getElementById('btn-begin').disabled = true;
     document.getElementById('setup-error').classList.add('hidden');
     document.getElementById('loading').classList.add('hidden');
+    document.getElementById('meditation-mood').value = this.mood;
+    document.getElementById('include-music').checked  = this.includeMusic;
   },
 
   // ── Begin meditation ──────────────────────────────────────────────────
@@ -139,12 +143,16 @@ const App = {
     // Browsers block AudioContext.resume() if called outside a gesture.
     this._audio._ensureContext().catch(() => {});
 
+    // Capture mood + music preference at click time
+    this.mood         = document.getElementById('meditation-mood').value || 'peaceful';
+    this.includeMusic = document.getElementById('include-music').checked;
+
     beginBtn.disabled = true;
     loading.classList.remove('hidden');
     errEl.classList.add('hidden');
 
     try {
-      const res = await this._post('/api/meditation', { topic, duration: this.duration });
+      const res = await this._post('/api/meditation', { topic, duration: this.duration, mood: this.mood });
 
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
@@ -185,6 +193,7 @@ const App = {
       ? data.soundLayers
       : (data.ambientSound ? [data.ambientSound] : ['cosmic_drone']);
     this._audio.start(layers).then(() => this._audio.ringBell()).catch(() => {});
+    if (this.includeMusic) this._audio.startMusic(this.mood).catch(() => {});
 
     // Run phases
     this._sessionActive = true;
@@ -242,7 +251,7 @@ const App = {
   _completeSession(total) {
     this._sessionActive = false;
     this._audio.ringBell();
-    setTimeout(() => this._audio.fadeOut(3), 1000);
+    setTimeout(() => { this._audio.fadeOut(3); this._audio.stopMusic(3); }, 1000);
     setTimeout(() => { if (this._medCanvas) { this._medCanvas.stop(); this._medCanvas = null; } }, 3500);
 
     this._setView('complete');
@@ -260,6 +269,7 @@ const App = {
     this._sessionActive = false;
     if (this._cancelPhase) { this._cancelPhase(); this._cancelPhase = null; }
     this._audio.stop();
+    this._audio.stopMusic(0);
     if (this._medCanvas) { this._medCanvas.stop(); this._medCanvas = null; }
     this._showSetup();
   },

@@ -41,29 +41,50 @@ canvas {
   display: block;
 }
 
+/* ── Login animations ──────────────────────────────────────────────────── */
+@keyframes loginFadeInUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Animate in, hold, then gently fade out and drift up */
+@keyframes welcomeTextLifecycle {
+  0%   { opacity: 0; transform: translateY(28px); }
+  12%  { opacity: 1; transform: translateY(0); }
+  65%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-10px); }
+}
+
 /* ── Login ─────────────────────────────────────────────────────────────── */
 .login-content {
   position: relative;
   z-index: 1;
   text-align: center;
-  max-width: 420px;
-  padding: 2rem;
+  width: min(420px, calc(100vw - 2rem));
+  padding: clamp(1.5rem, 5vw, 2.5rem);
+  background: rgba(7, 7, 26, 0.5);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.5rem;
 }
 
 .brand-title {
   font-family: 'Crimson Text', Georgia, serif;
-  font-size: clamp(3.5rem, 8vw, 5rem);
+  font-size: clamp(3rem, 10vw, 5rem);
   font-weight: 400;
   line-height: 1.05;
   letter-spacing: 0.04em;
   margin-bottom: 1.25rem;
+  animation: welcomeTextLifecycle 5.5s ease forwards;
 }
 .brand-title span { color: var(--primary); font-style: italic; }
 
 .tagline {
   color: var(--text-dim);
-  font-size: 1.05rem;
+  font-size: clamp(0.9rem, 2.5vw, 1.05rem);
   margin-bottom: 2.75rem;
+  animation: welcomeTextLifecycle 5.5s 0.15s ease forwards;
 }
 
 .btn-github {
@@ -76,11 +97,13 @@ canvas {
   padding: 0.85rem 2rem;
   border-radius: var(--radius-pill);
   font-family: inherit;
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 2.5vw, 1rem);
   font-weight: 400;
   text-decoration: none;
   backdrop-filter: blur(12px);
   transition: background 0.25s, border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+  opacity: 0;
+  animation: loginFadeInUp 0.7s 0.8s ease forwards;
 }
 .btn-github svg { width: 1.2rem; height: 1.2rem; flex-shrink: 0; }
 .btn-github:hover {
@@ -94,6 +117,8 @@ canvas {
   margin-top: 1.75rem;
   font-size: 0.8rem;
   color: var(--text-dim);
+  opacity: 0;
+  animation: loginFadeInUp 0.7s 1.1s ease forwards;
 }
 
 /* ── Setup ─────────────────────────────────────────────────────────────── */
@@ -184,6 +209,75 @@ textarea::placeholder { color: var(--text-dim); }
   color: #fff;
   font-weight: 500;
 }
+
+/* ── Mood select ───────────────────────────────────────────────────────── */
+.mood-group { display: flex; flex-direction: column; }
+
+#meditation-mood {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--surface)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(232,228,255,0.45)' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")
+    no-repeat right 1.1rem center;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-pill);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.93rem;
+  font-weight: 300;
+  padding: 0.6rem 2.8rem 0.6rem 1.2rem;
+  cursor: pointer;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+#meditation-mood:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(124, 107, 255, 0.15);
+}
+#meditation-mood option { background: #12122e; color: var(--text); }
+
+/* ── Music toggle ──────────────────────────────────────────────────────── */
+.music-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+}
+.music-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+
+.music-toggle-track {
+  position: relative;
+  width: 38px; height: 22px;
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 100px;
+  flex-shrink: 0;
+  transition: background 0.25s, border-color 0.25s;
+}
+.music-toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: transform 0.25s, background 0.25s;
+}
+.music-toggle input:checked ~ .music-toggle-track {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.music-toggle input:checked ~ .music-toggle-track::after {
+  transform: translateX(16px);
+  background: #fff;
+}
+.music-toggle-label {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  transition: color 0.2s;
+}
+.music-toggle:hover .music-toggle-label { color: var(--text); }
 
 /* ── Shared buttons ────────────────────────────────────────────────────── */
 .btn-primary {
@@ -284,21 +378,32 @@ textarea::placeholder { color: var(--text-dim); }
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6rem 2rem 2rem;
+  padding: clamp(3rem, 8vw, 6rem) clamp(1rem, 4vw, 2rem) clamp(1rem, 3vw, 2rem);
 }
 .phase-text {
   font-family: 'Crimson Text', Georgia, serif;
-  font-size: clamp(1.1rem, 2.5vw, 1.45rem);
+  font-size: clamp(1.05rem, 3.5vw, 1.45rem);
   font-style: italic;
-  line-height: 1.9;
+  line-height: 1.85;
   text-align: center;
-  max-width: 580px;
+  width: min(580px, calc(100vw - 2rem));
   color: var(--text);
+  /* glass pill backdrop */
+  background: rgba(7, 7, 26, 0.52);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.25rem;
+  padding: clamp(1.25rem, 4vw, 1.75rem) clamp(1.25rem, 5vw, 2.25rem);
+  /* animate: fade up in, fade down out */
   opacity: 0;
-  transition: opacity 1.2s ease;
-  text-shadow: 0 0 30px rgba(124, 107, 255, 0.25);
+  transform: translateY(14px);
+  transition: opacity 1.1s ease, transform 1.1s ease;
 }
-.phase-text.visible { opacity: 1; }
+.phase-text.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
 
 .meditation-footer {
   display: flex;

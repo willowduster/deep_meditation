@@ -699,6 +699,114 @@ class MeditationAudio {
     });
   }
 
+  /* ── Music (chord pad engine) ──────────────────────────────────────── */
+
+  async startMusic(mood) {
+    await this._ensureContext();
+    const ctx = this._ctx;
+    this._musicGain = ctx.createGain();
+    this._musicGain.gain.setValueAtTime(0, ctx.currentTime);
+    this._musicGain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 5);
+    this._musicGain.connect(this._master);
+    this._musicNodes = [this._musicGain];
+    this._musicTimeouts = [];
+    this._buildChordPads(mood);
+  }
+
+  stopMusic(fadeSecs = 3) {
+    if (!this._musicGain) return;
+    const now = this._ctx.currentTime;
+    (this._musicTimeouts || []).forEach(id => clearTimeout(id));
+    this._musicTimeouts = [];
+    this._musicGain.gain.cancelScheduledValues(now);
+    this._musicGain.gain.setValueAtTime(this._musicGain.gain.value, now);
+    if (fadeSecs > 0) {
+      this._musicGain.gain.linearRampToValueAtTime(0, now + fadeSecs);
+      setTimeout(() => this._disconnectMusicNodes(), fadeSecs * 1000 + 200);
+    } else {
+      this._disconnectMusicNodes();
+    }
+  }
+
+  _disconnectMusicNodes() {
+    (this._musicNodes || []).forEach(n => {
+      try { n.stop && n.stop(); } catch (_) {}
+      try { n.disconnect(); } catch (_) {}
+    });
+    this._musicNodes = [];
+    this._musicGain = null;
+  }
+
+  _buildChordPads(mood) {
+    const C3 = 130.81;
+    const st = n => C3 * Math.pow(2, n / 12);
+    const progressions = {
+      peaceful:   { chords: [[0,4,7,11],[5,9,12,16],[9,12,16,19],[4,7,11,14]], durRange: [16, 20] }, // Cmaj7 Fmaj7 Am7 Em7
+      hopeful:    { chords: [[0,4,7],[7,11,14],[9,12,16],[5,9,12]],            durRange: [12, 16] }, // C G Am F
+      melancholy: { chords: [[9,12,16],[5,9,12],[9,12,16],[7,11,14]],          durRange: [15, 19] }, // Am F Am G
+      mysterious: { chords: [[2,5,9],[9,14,16],[5,9,12],[0,2,7]],              durRange: [16, 21] }, // Dm Asus4 F Csus2
+      ethereal:   { chords: [[0,2,7],[7,12,14],[5,7,12],[2,7,9]],              durRange: [18, 24] }, // Csus2 Gsus4 Fsus2 Dsus4
+      grounded:   { chords: [[0,7],[7,14],[5,12],[9,16]],                      durRange: [12, 16] }, // C5 G5 F5 A5 power chords
+      dramatic:   { chords: [[2,5,9],[2,5,8],[9,12,16],[4,8,11]],              durRange: [14, 18] }, // Dm Ddim Am E
+      joyful:     { chords: [[0,4,7],[5,9,12],[7,11,14],[0,4,12]],             durRange: [11, 15] }, // C F G C
+    };
+    const prog = progressions[mood] || progressions.peaceful;
+    const chords = prog.chords;
+    const [dMin, dMax] = prog.durRange;
+    const attack = 3.2, release = 3.5;
+    let step = 0;
+
+    const scheduleChord = () => {
+      if (!this._musicGain) return;
+      const chord = chords[step % chords.length];
+      const durSecs = dMin + Math.random() * (dMax - dMin);
+      const now2 = this._ctx.currentTime;
+      const ctx = this._ctx;
+
+      chord.forEach(semitones => {
+        const freq = st(semitones);
+        [-1, 1].forEach(centOffset => { // two slightly detuned oscillators per note
+          const osc = ctx.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.value = freq * Math.pow(2, centOffset * 0.5 / 1200); // ±0.5 cent detune
+
+          const vib = ctx.createOscillator();
+          vib.type = 'sine';
+          vib.frequency.value = 4.8 + Math.random() * 0.6;
+          const vibAmt = ctx.createGain();
+          vibAmt.gain.value = freq * 0.002;
+          vib.connect(vibAmt);
+          vibAmt.connect(osc.frequency);
+
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0, now2);
+          g.gain.linearRampToValueAtTime(0.045, now2 + attack);
+          g.gain.setValueAtTime(0.045, now2 + durSecs - release);
+          g.gain.linearRampToValueAtTime(0, now2 + durSecs);
+
+          const lpf = ctx.createBiquadFilter();
+          lpf.type = 'lowpass';
+          lpf.frequency.value = 1800;
+
+          osc.connect(g);
+          g.connect(lpf);
+          lpf.connect(this._musicGain);
+
+          osc.start(now2); osc.stop(now2 + durSecs + 0.1);
+          vib.start(now2); vib.stop(now2 + durSecs + 0.1);
+          this._musicNodes.push(osc, vib, vibAmt, g, lpf);
+        });
+      });
+
+      step++;
+      const nextIn = (durSecs - release) * 1000; // crossfade overlap
+      const t = setTimeout(scheduleChord, nextIn);
+      this._musicTimeouts.push(t);
+    };
+
+    scheduleChord();
+  }
+
   /* ── Fade / stop ───────────────────────────────────────────────────── */
 
   async fadeOut(secs = 3) {

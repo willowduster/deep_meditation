@@ -148,11 +148,13 @@ app.post('/api/meditation', async (req, res) => {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  const { topic, duration } = req.body;
+  const { topic, duration, mood } = req.body;
 
   if (!topic || typeof topic !== 'string' || topic.trim().length < 3 || topic.length > 500) {
     return res.status(400).json({ error: 'Invalid topic (3–500 characters)' });
   }
+  const validMoods = ['peaceful','hopeful','melancholy','mysterious','ethereal','grounded','dramatic','joyful'];
+  const moodStr = validMoods.includes(mood) ? mood : 'peaceful';
   const durationNum = Number(duration);
   if (![5, 10, 15, 20, 30].includes(durationNum)) {
     return res.status(400).json({ error: 'Duration must be 5, 10, 15, 20, or 30 minutes' });
@@ -160,9 +162,11 @@ app.post('/api/meditation', async (req, res) => {
 
   const totalSeconds = durationNum * 60;
 
-  const prompt = `Create a ${durationNum}-minute guided meditation personalized for: "${topic.trim()}".
+  const prompt = `Create a ${durationNum}-minute guided meditation.
+User's intention: "${topic.trim()}"
+Emotional mood: ${moodStr}
 
-Return ONLY a valid JSON object — no markdown, no explanation — with this exact shape:
+Let the mood shape the tone and language of all guidance. Return ONLY a valid JSON object — no markdown, no explanation — with this exact shape:
 {
   "title": "<short evocative title>",
   "phases": [
