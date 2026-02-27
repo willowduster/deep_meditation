@@ -123,8 +123,14 @@ const App = {
         avatarEl.src = this.user.avatar_url;
         avatarEl.style.display = '';
       } else {
-        // Guest — hide the avatar image
-        avatarEl.style.display = 'none';
+        // Guest — use a generated SVG avatar
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36">
+          <circle cx="18" cy="18" r="18" fill="#2a2540"/>
+          <circle cx="18" cy="14" r="6" fill="#7c6bff" opacity="0.9"/>
+          <path d="M6 32c0-6.627 5.373-10 12-10s12 3.373 12 10" fill="#7c6bff" opacity="0.7"/>
+        </svg>`;
+        avatarEl.src = 'data:image/svg+xml;base64,' + btoa(svg);
+        avatarEl.style.display = '';
       }
     }
     // Reset form state
