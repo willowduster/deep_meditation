@@ -1,0 +1,17 @@
+{
+  "name": "deep-meditation",
+  "version": "1.0.0",
+  "description": "AI-powered guided meditation web app",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "express-session": "^1.18.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
