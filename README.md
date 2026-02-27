@@ -1,14 +1,18 @@
 # Deep Meditation
 
-An AI-powered guided meditation web app. Describe what you want to meditate on, choose a duration, and receive a personalised visual + audio experience powered by GitHub Models (Copilot AI).
+An AI-powered guided meditation web app. Describe what you want to meditate on, choose a duration and mood, and receive a personalised visual and audio experience powered by GitHub Models.
 
 ## Features
 
-- 🔐 **Login with GitHub** – no accounts or passwords
-- 🧠 **AI-generated meditation** – topic-specific guidance, colour palette and ambient sound selection
-- 🌬️ **Breathing animation** – canvas-based circle that pulses to your breath
-- 🎵 **Synthesised ambient audio** – cosmic drones, ocean, rain or forest generated entirely in the browser via Web Audio API, with theta-wave binaural beats
+- 🔐 **Login with GitHub** – no accounts or passwords; guest access also supported
+- 🧠 **AI-generated meditation** – topic-specific guided session, colour palette, and ambient sound layers
+- 🎨 **Live canvas animation** – breathing circle that pulses in sync with each phase
+- 🌊 **18-layer ambient synthesiser** – cosmic drones, binaural beats, filtered noise textures and more, all generated in the browser via Web Audio API
+- 🎹 **Generative music engine** – chord pad synthesiser with 7 instruments (piano, guitar, bass, violin, cello, oboe, flute) and a sparse arpeggiator, driven by your mood selection
+- 🎭 **Multi-select mood picker** – choose one or more moods (Peaceful, Hopeful, Melancholy, Mysterious, Ethereal, Grounded, Dramatic, Joyful) to shape the music
+- 🔊 **Studio-quality DSP** – convolution reverb (4.2 s decay) and stereo ping-pong delay on every audio path
 - ⏱️ **Configurable duration** – 5, 10, 15, 20 or 30 minutes
+- 💾 **Record & download** – capture the full session audio and export as **WAV**, **FLAC**, or **MP3 @ 256 kbps**, entirely in the browser
 - 🐳 **Fully self-contained Docker deployment**
 
 ## Quick Start
@@ -36,7 +40,13 @@ openssl rand -hex 32
 -join ((1..32) | ForEach-Object { '{0:x2}' -f (Get-Random -Max 256) })
 ```
 
-Then edit `.env` and fill in `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and `SESSION_SECRET` with the values from the steps above.
+Edit `.env` and fill in `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and `SESSION_SECRET`.
+
+To enable **guest access** (no GitHub login required), add your own GitHub personal access token:
+
+```
+GITHUB_SERVER_TOKEN=ghp_...
+```
 
 ### 3. Run with Docker
 
@@ -57,26 +67,40 @@ node server/index.js
 
 ## Environment Variables
 
-| Variable              | Required | Description |
-|-----------------------|----------|-------------|
-| `GITHUB_CLIENT_ID`    | ✅       | OAuth App client ID |
-| `GITHUB_CLIENT_SECRET`| ✅       | OAuth App client secret |
-| `SESSION_SECRET`      | ✅       | Random secret for session encryption |
-| `BASE_URL`            | ✅       | Public URL (used for OAuth callback) |
-| `AI_MODEL`            | optional | GitHub Models model name (default: `gpt-4o-mini`) |
-| `PORT`                | optional | HTTP port (default: `3000`) |
-| `NODE_ENV`            | optional | Set to `production` when deploying behind HTTPS to enforce Secure cookies |
-| `SECURE_COOKIES`      | optional | Set to `1` to enforce Secure cookies without full production mode |
+| Variable               | Required | Description |
+|------------------------|----------|-------------|
+| `GITHUB_CLIENT_ID`     | ✅       | OAuth App client ID |
+| `GITHUB_CLIENT_SECRET` | ✅       | OAuth App client secret |
+| `SESSION_SECRET`       | ✅       | Random secret for session encryption |
+| `BASE_URL`             | ✅       | Public URL (used for OAuth callback) |
+| `GITHUB_SERVER_TOKEN`  | optional | GitHub PAT used for guest sessions and server-side AI calls |
+| `AI_MODEL`             | optional | GitHub Models model name (default: `gpt-4o-mini`) |
+| `PORT`                 | optional | HTTP port (default: `3000`) |
+| `NODE_ENV`             | optional | Set to `production` to enforce Secure cookies |
+| `SECURE_COOKIES`       | optional | Set to `1` to enforce Secure cookies without full production mode |
 
 ## AI Access
 
-This app uses the **GitHub Models** API (`models.inference.ai.azure.com`), which is available to all GitHub users. Your GitHub OAuth token is used directly – no additional API keys are needed.
+Uses the **GitHub Models** API (`models.inference.ai.azure.com`), available to all GitHub users. Your GitHub OAuth token is forwarded directly — no extra API keys needed. When `GITHUB_SERVER_TOKEN` is set, it is used for guest sessions.
+
+## Download & Export
+
+After a session ends, click the **download button** in the player footer to open the export modal. Choose a format:
+
+| Format | Details |
+|--------|---------|
+| WAV    | Lossless 16-bit PCM, pure browser encoding |
+| FLAC   | Lossless compressed, pure browser encoding |
+| MP3    | 256 kbps, encoded via [lamejs](https://github.com/nicktindall/lamejs) loaded from CDN |
+
+Recording starts automatically when the session begins and stops when it ends, so the complete audio is always captured.
 
 ## Technology
 
 - **Backend**: Node.js + Express (no database)
 - **Frontend**: Vanilla JavaScript, Canvas API, Web Audio API
-- **Auth**: GitHub OAuth 2.0
+- **Auth**: GitHub OAuth 2.0 + optional guest mode
 - **AI**: GitHub Models (Copilot AI) – `gpt-4o-mini` / `gpt-4o`
+- **Audio export**: Pure JS WAV/FLAC encoders + lamejs for MP3
 - **Container**: Docker + Docker Compose
 
