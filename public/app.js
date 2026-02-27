@@ -135,6 +135,10 @@ const App = {
     const loading  = document.getElementById('loading');
     const errEl    = document.getElementById('setup-error');
 
+    // Warm up AudioContext NOW while we're still inside the user-gesture handler.
+    // Browsers block AudioContext.resume() if called outside a gesture.
+    this._audio._ensureContext().catch(() => {});
+
     beginBtn.disabled = true;
     loading.classList.remove('hidden');
     errEl.classList.add('hidden');

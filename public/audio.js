@@ -24,7 +24,7 @@ class MeditationAudio {
       shelf.gain.value      = -9;
       this._master.connect(shelf);
       shelf.connect(this._ctx.destination);
-      this._nodes.push(shelf);
+      // NOTE: shelf is permanent infrastructure – do NOT push to this._nodes
     }
     if (this._ctx.state === 'suspended') await this._ctx.resume();
   }
