@@ -711,6 +711,7 @@ class MeditationAudio {
     this._musicNodes = [this._musicGain];
     this._musicTimeouts = [];
     this._buildChordPads(mood);
+    this._buildArpeggiator(mood);
   }
 
   stopMusic(fadeSecs = 3) {
@@ -1026,6 +1027,123 @@ class MeditationAudio {
     vib.start(now);   vib.stop(now + dur + 0.1);
     noise.start(now); noise.stop(now + dur + 0.1);
     this._musicNodes.push(osc, vib, vibAmt, gTonal, noise, breathBpf, gBreath);
+  }
+
+  _buildArpeggiator(mood) {
+    // Lead arpeggiator — sparse single notes with heavy dedicated delay for a spacy feel.
+    // Runs independently of the chord pads, drawing from the same scale tones 1–2 oct above.
+    const C5 = 523.25; // one octave above the pad base (C4)
+    const st = n => C5 * Math.pow(2, n / 12);
+    const ctx = this._ctx;
+
+    // ── Dedicated delay bus for the arp ──────────────────────────────────
+    // Longer time + higher feedback than global delay → distinctive spacey echo
+    const arpDelayTime = 0.55 + Math.random() * 0.18; // 550–730 ms (sits between dotted-8th and QN)
+    const arpDelay = ctx.createDelay(4.0);
+    arpDelay.delayTime.value = arpDelayTime;
+    const arpFB = ctx.createGain();
+    arpFB.gain.value = 0.62;           // fades over ~7 echoes
+    arpDelay.connect(arpFB);
+    arpFB.connect(arpDelay);           // feedback loop
+
+    const arpWetGain = ctx.createGain();
+    arpWetGain.gain.value = 0.80;      // wet (most signal goes through delay)
+    arpDelay.connect(arpWetGain);
+    arpWetGain.connect(this._musicGain);
+
+    const arpDryGain = ctx.createGain();
+    arpDryGain.gain.value = 0.15;      // very little dry — keeps it distant/airy
+    arpDryGain.connect(this._musicGain);
+
+    this._musicNodes.push(arpDelay, arpFB, arpWetGain, arpDryGain);
+
+    // ── Mood settings ────────────────────────────────────────────────────
+    // notePools: arrays of semitone sets to draw from (from C5)
+    // rateRange: [min, max] seconds between note attempts
+    // sparseChance: probability 0–1 of SKIPPING a slot (higher = sparser)
+    // waveform: oscillator type for the lead tone
+    // lpfFreq: lowpass cutoff — brighter = more present
+    const moodArp = {
+      peaceful:   { notePools: [[0,7,12,16],[4,7,11,16]],         rateRange:[3.5,7.0], sparseChance:0.55, waveform:'triangle', lpfFreq:2200 },
+      hopeful:    { notePools: [[0,4,7,12,16],[7,12,14,19]],      rateRange:[2.5,5.5], sparseChance:0.45, waveform:'triangle', lpfFreq:2800 },
+      melancholy: { notePools: [[9,12,16,21],[5,9,12,17]],        rateRange:[4.0,8.0], sparseChance:0.60, waveform:'sine',     lpfFreq:1800 },
+      mysterious: { notePools: [[2,9,14,17],[0,5,9,14]],          rateRange:[4.0,8.5], sparseChance:0.60, waveform:'sine',     lpfFreq:1600 },
+      ethereal:   { notePools: [[0,7,12,19],[5,12,16,24]],        rateRange:[5.0,9.0], sparseChance:0.65, waveform:'sine',     lpfFreq:1500 },
+      grounded:   { notePools: [[0,7,12],[5,7,12,17]],            rateRange:[2.0,4.5], sparseChance:0.45, waveform:'triangle', lpfFreq:2000 },
+      dramatic:   { notePools: [[2,5,9,14],[2,5,8,14]],           rateRange:[2.5,5.0], sparseChance:0.50, waveform:'sawtooth', lpfFreq:1400 },
+      joyful:     { notePools: [[0,4,7,12,16],[5,9,12,17,21]],    rateRange:[1.8,4.0], sparseChance:0.38, waveform:'triangle', lpfFreq:3200 },
+    };
+    const cfg = moodArp[mood] || moodArp.peaceful;
+    let noteIdx  = Math.floor(Math.random() * 8); // start at random position so it doesn't always begin on root
+    let poolIdx  = 0;
+
+    const playNext = () => {
+      if (!this._musicGain) return;
+      const rate    = cfg.rateRange[0] + Math.random() * (cfg.rateRange[1] - cfg.rateRange[0]);
+      const nextMs  = rate * 1000;
+
+      // Sparse: skip this slot silently
+      if (Math.random() < cfg.sparseChance) {
+        this._musicTimeouts.push(setTimeout(playNext, nextMs));
+        return;
+      }
+
+      // Occasionally switch note pool for variety
+      if (Math.random() < 0.20) poolIdx = (poolIdx + 1) % cfg.notePools.length;
+      const pool = cfg.notePools[poolIdx];
+
+      // Occasionally jump to a random note rather than stepping sequentially
+      if (Math.random() < 0.30) noteIdx = Math.floor(Math.random() * pool.length);
+      const semi  = pool[noteIdx % pool.length];
+      noteIdx++;
+
+      // Occasionally drop one octave for depth
+      const octMult = Math.random() < 0.20 ? 0.5 : 1.0;
+      const freq   = st(semi) * octMult;
+      const noteDur = 1.2 + Math.random() * 2.2;
+      const now    = this._ctx.currentTime;
+
+      // ── Oscillator ──────────────────────────────────────────────────
+      const osc = ctx.createOscillator();
+      osc.type = cfg.waveform;
+      osc.frequency.value = freq;
+
+      // Gentle vibrato — starts delayed to mimic breath/bow pressure
+      const vib = ctx.createOscillator();
+      vib.type = 'sine';
+      vib.frequency.value = 4.8 + Math.random() * 1.2;
+      const vibAmt = ctx.createGain();
+      vibAmt.gain.setValueAtTime(0, now);
+      vibAmt.gain.linearRampToValueAtTime(freq * 0.003, now + noteDur * 0.4);
+      vib.connect(vibAmt); vibAmt.connect(osc.frequency);
+
+      // ── Amplitude envelope ───────────────────────────────────────────
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.18, now + 0.18);   // fast attack — crisp lead
+      g.gain.setValueAtTime(0.18, now + noteDur * 0.55);
+      g.gain.linearRampToValueAtTime(0, now + noteDur);
+
+      // ── Tone shaping ─────────────────────────────────────────────────
+      const lpf = ctx.createBiquadFilter();
+      lpf.type = 'lowpass';
+      lpf.frequency.value = cfg.lpfFreq;
+      lpf.Q.value = 1.0;
+
+      osc.connect(g); g.connect(lpf);
+      lpf.connect(arpDelay);   // wet path: note → delay → arpWetGain → musicGain
+      lpf.connect(arpDryGain); // dry path: tiny direct signal
+
+      osc.start(now); osc.stop(now + noteDur + 0.1);
+      vib.start(now); vib.stop(now + noteDur + 0.1);
+      this._musicNodes.push(osc, vib, vibAmt, g, lpf);
+
+      this._musicTimeouts.push(setTimeout(playNext, nextMs));
+    };
+
+    // First note fires after pads have established themselves (6–12 s)
+    const initDelay = 6000 + Math.random() * 6000;
+    this._musicTimeouts.push(setTimeout(playNext, initDelay));
   }
 
   /* ── Fade / stop ───────────────────────────────────────────────────── */
