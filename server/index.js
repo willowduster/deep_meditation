@@ -1,5 +1,7 @@
 'use strict';
 
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+
 const crypto = require('crypto');
 const express = require('express');
 const session = require('express-session');
@@ -200,9 +202,26 @@ Return ONLY a valid JSON object — no markdown, no explanation — with this ex
     "secondary": "<lighter hex>",
     "background": "<very dark hex>"
   },
-  "ambientSound": "<one of: cosmic, ocean, rain, forest, silence>",
+  "soundLayers": ["<layer1>", "<layer2>"],
   "affirmations": ["<affirmation 1>", "<affirmation 2>", "<affirmation 3>"]
 }
+
+For soundLayers choose 1–4 layers that best match the topic from this list ONLY:
+waves, rain_heavy, rain_light, drips, wind_soft, wind_strong, thunder_distant,
+crickets, frogs, birds_forest, birds_tropical, seagulls,
+fire_crackling, stream_brook, cave_drips,
+cosmic_drone, singing_bowl, om_chant,
+silence
+
+Examples:
+- "beach" or "ocean" → ["waves", "wind_soft", "seagulls"]
+- "forest" or "nature walk" → ["birds_forest", "wind_soft", "stream_brook"]
+- "rain" or "stormy" → ["rain_heavy", "thunder_distant"]
+- "fire" or "fireplace" or "cozy" → ["fire_crackling"]
+- "crickets" or "night" or "summer night" → ["crickets", "frogs"]
+- "meditation" or "zen" or "calm" → ["singing_bowl", "cosmic_drone"]
+- "cave" or "underground" → ["cave_drips", "wind_soft"]
+- "tropical" → ["birds_tropical", "waves", "wind_soft"]
 
 IMPORTANT: phase durations must sum to exactly ${totalSeconds} seconds.`;
 

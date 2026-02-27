@@ -177,7 +177,10 @@ const App = {
     document.getElementById('timer-elapsed').textContent = '0:00';
 
     // Audio (async – won't block)
-    this._audio.start(data.ambientSound || 'cosmic').then(() => this._audio.ringBell()).catch(() => {});
+    const layers = Array.isArray(data.soundLayers) && data.soundLayers.length
+      ? data.soundLayers
+      : (data.ambientSound ? [data.ambientSound] : ['cosmic_drone']);
+    this._audio.start(layers).then(() => this._audio.ringBell()).catch(() => {});
 
     // Run phases
     this._sessionActive = true;
@@ -202,7 +205,7 @@ const App = {
         // Update text (fade out → swap → fade in)
         const textEl = document.getElementById('phase-text');
         textEl.classList.remove('visible');
-        await this._sleep(600);
+        await this._sleep(1100);
         if (!this._sessionActive) break;
         textEl.textContent = ph.text || '';
         textEl.classList.add('visible');
