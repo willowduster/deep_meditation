@@ -24,8 +24,19 @@ An AI-powered guided meditation web app. Describe what you want to meditate on, 
 
 ```bash
 cp .env.example .env
-# Edit .env and fill in GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, SESSION_SECRET
 ```
+
+Generate a secure `SESSION_SECRET`:
+
+```bash
+# macOS / Linux / WSL
+openssl rand -hex 32
+
+# Windows PowerShell (if openssl is unavailable)
+-join ((1..32) | ForEach-Object { '{0:x2}' -f (Get-Random -Max 256) })
+```
+
+Then edit `.env` and fill in `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and `SESSION_SECRET` with the values from the steps above.
 
 ### 3. Run with Docker
 
@@ -54,6 +65,8 @@ node server/index.js
 | `BASE_URL`            | ✅       | Public URL (used for OAuth callback) |
 | `AI_MODEL`            | optional | GitHub Models model name (default: `gpt-4o-mini`) |
 | `PORT`                | optional | HTTP port (default: `3000`) |
+| `NODE_ENV`            | optional | Set to `production` when deploying behind HTTPS to enforce Secure cookies |
+| `SECURE_COOKIES`      | optional | Set to `1` to enforce Secure cookies without full production mode |
 
 ## AI Access
 
