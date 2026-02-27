@@ -738,8 +738,10 @@ class MeditationAudio {
   }
 
   _buildChordPads(mood) {
-    const C3 = 130.81;
-    const st = n => C3 * Math.pow(2, n / 12);
+    // Base: C4 = 261.63 Hz — mid-range, clear and audible through speakers
+    const C4 = 261.63;
+    const st = n => C4 * Math.pow(2, n / 12);
+
     const progressions = {
       peaceful:   { chords: [[0,4,7,11],[5,9,12,16],[9,12,16,19],[4,7,11,14]], durRange: [16, 20] }, // Cmaj7 Fmaj7 Am7 Em7
       hopeful:    { chords: [[0,4,7],[7,11,14],[9,12,16],[5,9,12]],            durRange: [12, 16] }, // C G Am F
@@ -753,7 +755,7 @@ class MeditationAudio {
     const prog = progressions[mood] || progressions.peaceful;
     const chords = prog.chords;
     const [dMin, dMax] = prog.durRange;
-    const attack = 3.2, release = 3.5;
+    const attack = 3.5, release = 4.0;
     let step = 0;
 
     const scheduleChord = () => {
@@ -764,42 +766,52 @@ class MeditationAudio {
       const ctx = this._ctx;
 
       chord.forEach(semitones => {
-        const freq = st(semitones);
-        [-1, 1].forEach(centOffset => { // two slightly detuned oscillators per note
+        const baseFreq = st(semitones);
+
+        // Three detuned sawtooth oscillators per note → classic supersaw pad
+        // Sawtooth through a heavy LPF sounds warm and sustained, never bell-like
+        const detunes = [-8, 0, +8]; // cents
+        const oscGain = 0.06 / detunes.length;
+
+        detunes.forEach(cents => {
           const osc = ctx.createOscillator();
-          osc.type = 'sine';
-          osc.frequency.value = freq * Math.pow(2, centOffset * 0.5 / 1200); // ±0.5 cent detune
+          osc.type = 'sawtooth';
+          osc.frequency.value = baseFreq * Math.pow(2, cents / 1200);
 
-          const vib = ctx.createOscillator();
-          vib.type = 'sine';
-          vib.frequency.value = 4.8 + Math.random() * 0.6;
-          const vibAmt = ctx.createGain();
-          vibAmt.gain.value = freq * 0.002;
-          vib.connect(vibAmt);
-          vibAmt.connect(osc.frequency);
-
+          // Amplitude envelope
           const g = ctx.createGain();
           g.gain.setValueAtTime(0, now2);
-          g.gain.linearRampToValueAtTime(0.045, now2 + attack);
-          g.gain.setValueAtTime(0.045, now2 + durSecs - release);
+          g.gain.linearRampToValueAtTime(oscGain, now2 + attack);
+          g.gain.setValueAtTime(oscGain, now2 + durSecs - release);
           g.gain.linearRampToValueAtTime(0, now2 + durSecs);
 
+          // Heavy lowpass — this is what turns a harsh saw into a warm pad
           const lpf = ctx.createBiquadFilter();
           lpf.type = 'lowpass';
-          lpf.frequency.value = 1800;
+          lpf.frequency.value = 700;
+          lpf.Q.value = 1.8;
+
+          // Slow filter cutoff LFO for subtle movement (0.07–0.12 Hz)
+          const lfo = ctx.createOscillator();
+          lfo.type = 'sine';
+          lfo.frequency.value = 0.07 + Math.random() * 0.05;
+          const lfoAmt = ctx.createGain();
+          lfoAmt.gain.value = 250; // ±250 Hz sweep around the 700 Hz centre
+          lfo.connect(lfoAmt);
+          lfoAmt.connect(lpf.frequency);
 
           osc.connect(g);
           g.connect(lpf);
           lpf.connect(this._musicGain);
 
           osc.start(now2); osc.stop(now2 + durSecs + 0.1);
-          vib.start(now2); vib.stop(now2 + durSecs + 0.1);
-          this._musicNodes.push(osc, vib, vibAmt, g, lpf);
+          lfo.start(now2); lfo.stop(now2 + durSecs + 0.1);
+          this._musicNodes.push(osc, lfo, lfoAmt, g, lpf);
         });
       });
 
       step++;
-      const nextIn = (durSecs - release) * 1000; // crossfade overlap
+      const nextIn = (durSecs - release) * 1000; // crossfade into next chord
       const t = setTimeout(scheduleChord, nextIn);
       this._musicTimeouts.push(t);
     };
