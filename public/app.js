@@ -4,7 +4,7 @@
 const App = {
   user:            null,
   duration:        10,
-  mood:            'peaceful',
+  moods:           ['peaceful'],
   meditationData:  null,
   _bgCanvas:       null,
   _medCanvas:      null,
@@ -65,6 +65,17 @@ const App = {
         document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         this.duration = Number(btn.dataset.value);
+      });
+    });
+
+    // Mood picker (multi-select)
+    document.querySelectorAll('.mood-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        btn.classList.toggle('active');
+        // Keep at least one selected
+        const active = document.querySelectorAll('.mood-btn.active');
+        if (active.length === 0) btn.classList.add('active');
+        this.moods = [...document.querySelectorAll('.mood-btn.active')].map(b => b.dataset.mood);
       });
     });
 
@@ -149,7 +160,10 @@ const App = {
     document.getElementById('btn-begin').disabled = true;
     document.getElementById('setup-error').classList.add('hidden');
     document.getElementById('loading').classList.add('hidden');
-    document.getElementById('meditation-mood').value = this.mood;
+    const activeMoods = this.moods.length ? this.moods : ['peaceful'];
+    document.querySelectorAll('.mood-btn').forEach(b => {
+      b.classList.toggle('active', activeMoods.includes(b.dataset.mood));
+    });
   },
 
   // ── Begin meditation ──────────────────────────────────────────────────
@@ -166,15 +180,16 @@ const App = {
     // Browsers block AudioContext.resume() if called outside a gesture.
     this._audio._ensureContext().catch(() => {});
 
-    // Capture mood at click time
-    this.mood = document.getElementById('meditation-mood').value || 'peaceful';
+    // Capture moods at click time
+    this.moods = [...document.querySelectorAll('.mood-btn.active')].map(b => b.dataset.mood);
+    if (!this.moods.length) this.moods = ['peaceful'];
 
     beginBtn.disabled = true;
     loading.classList.remove('hidden');
     errEl.classList.add('hidden');
 
     try {
-      const res = await this._post('/api/meditation', { topic, duration: this.duration, mood: this.mood });
+      const res = await this._post('/api/meditation', { topic, duration: this.duration, mood: this.moods.join(', ') });
 
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
@@ -215,7 +230,8 @@ const App = {
       ? data.soundLayers
       : (data.ambientSound ? [data.ambientSound] : ['cosmic_drone']);
     this._audio.start(layers).then(() => this._audio.startRecording()).catch(() => {});
-    this._audio.startMusic(this.mood).catch(() => {});
+    const pickedMood = this.moods[Math.floor(Math.random() * this.moods.length)];
+    this._audio.startMusic(pickedMood).catch(() => {});
 
     // Run phases
     this._sessionActive = true;

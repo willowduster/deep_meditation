@@ -65,17 +65,17 @@
       </div>
 
       <div class="mood-group">
-        <label class="duration-label" for="meditation-mood">Mood</label>
-        <select id="meditation-mood" aria-label="Select mood">
-          <option value="peaceful">Peaceful — dreamy major 7ths</option>
-          <option value="hopeful">Hopeful — bright I–V–vi–IV</option>
-          <option value="melancholy">Melancholy — minor longing</option>
-          <option value="mysterious">Mysterious — suspended, unresolved</option>
-          <option value="ethereal">Ethereal — floating sus chords</option>
-          <option value="grounded">Grounded — open power chords</option>
-          <option value="dramatic">Dramatic — diminished tension</option>
-          <option value="joyful">Joyful — I–IV–V uplift</option>
-        </select>
+        <label class="duration-label">Mood</label>
+        <div class="mood-btn-group" role="group" aria-label="Select mood">
+          <button class="mood-btn active" data-mood="peaceful">Peaceful</button>
+          <button class="mood-btn" data-mood="hopeful">Hopeful</button>
+          <button class="mood-btn" data-mood="melancholy">Melancholy</button>
+          <button class="mood-btn" data-mood="mysterious">Mysterious</button>
+          <button class="mood-btn" data-mood="ethereal">Ethereal</button>
+          <button class="mood-btn" data-mood="grounded">Grounded</button>
+          <button class="mood-btn" data-mood="dramatic">Dramatic</button>
+          <button class="mood-btn" data-mood="joyful">Joyful</button>
+        </div>
       </div>
 
       <button id="btn-begin" class="btn-primary" disabled>Begin Meditation</button>
