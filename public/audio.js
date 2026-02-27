@@ -17,16 +17,63 @@ class MeditationAudio {
       this._master = this._ctx.createGain();
       this._master.gain.value = 0;
 
-      // Gentle high-shelf cut above 6kHz keeps everything soft
+      // ── Permanent output chain (never added to this._nodes) ──────────
+      // master → [dryGain, reverbSend → convolver → wetGain] → shelf → out
+
       const shelf = this._ctx.createBiquadFilter();
-      shelf.type            = 'highshelf';
-      shelf.frequency.value = 6000;
-      shelf.gain.value      = -9;
-      this._master.connect(shelf);
+      shelf.type = 'highshelf'; shelf.frequency.value = 6000; shelf.gain.value = -10;
+
+      const dryGain = this._ctx.createGain();  dryGain.gain.value  = 0.38;
+      const wetGain = this._ctx.createGain();  wetGain.gain.value  = 0.72;
+
+      // ConvolverNode with a synthetic large-room impulse response
+      const convolver = this._ctx.createConvolver();
+      convolver.buffer = this._buildIR(this._ctx, 4.2, 0.015);
+
+      this._master.connect(dryGain);    dryGain.connect(shelf);
+      this._master.connect(convolver);  convolver.connect(wetGain); wetGain.connect(shelf);
       shelf.connect(this._ctx.destination);
-      // NOTE: shelf is permanent infrastructure – do NOT push to this._nodes
+      // NOTE: all above are permanent infrastructure – do NOT push to this._nodes
     }
     if (this._ctx.state === 'suspended') await this._ctx.resume();
+  }
+
+  /**
+   * Build a synthetic stereo impulse response.
+   * @param {AudioContext} ctx
+   * @param {number} decaySecs  Total tail length (e.g. 4.2 s)
+   * @param {number} preDelay   Pre-delay in seconds (e.g. 0.015)
+   */
+  _buildIR(ctx, decaySecs, preDelay) {
+    const rate       = ctx.sampleRate;
+    const length     = Math.ceil(rate * decaySecs);
+    const preSamples = Math.ceil(rate * preDelay);
+    const buf        = ctx.createBuffer(2, length, rate);
+
+    // Early reflections – discrete taps that mimic room boundaries
+    const earlyTaps = [
+      { t: 0.007, g: 0.65 }, { t: 0.013, g: 0.55 }, { t: 0.021, g: 0.48 },
+      { t: 0.031, g: 0.40 }, { t: 0.047, g: 0.32 }, { t: 0.067, g: 0.22 },
+      { t: 0.089, g: 0.16 }, { t: 0.118, g: 0.11 },
+    ];
+
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      // Diffuse tail: exponentially decaying noise
+      for (let i = preSamples; i < length; i++) {
+        const age    = (i - preSamples) / rate;
+        const decay  = Math.exp(-age * (ch === 0 ? 2.8 : 2.6)); // slight L/R asymmetry
+        const noise  = (Math.random() * 2 - 1);
+        d[i] = noise * decay * 0.22;
+      }
+      // Overlay early reflections with slight L/R pan variance
+      const panOffset = ch === 0 ? 0 : 0.003;
+      for (const tap of earlyTaps) {
+        const idx = Math.round((tap.t + panOffset) * rate) + preSamples;
+        if (idx < length) d[idx] += tap.g * 0.55;
+      }
+    }
+    return buf;
   }
 
   /* ── Public API ────────────────────────────────────────────────────── */
@@ -79,62 +126,62 @@ class MeditationAudio {
 
   _buildWaves() {
     const ctx = this._ctx, out = this._master;
-    const rumble = this._pinkNoise(0.18);
+    const rumble = this._pinkNoise(0.12);  // quieter – reverb adds body
     const rumbleLpf = ctx.createBiquadFilter();
     rumbleLpf.type = 'lowpass'; rumbleLpf.frequency.value = 120;
     rumble.connect(rumbleLpf); rumbleLpf.connect(out);
     this._nodes.push(rumbleLpf);
 
-    const wash = this._pinkNoise(0.55);
+    const wash = this._pinkNoise(0.30);  // reduced – reverb fills the space
     const lpf = ctx.createBiquadFilter();
-    lpf.type = 'lowpass'; lpf.frequency.value = 1100;
+    lpf.type = 'lowpass'; lpf.frequency.value = 900;
     const hpf = ctx.createBiquadFilter();
-    hpf.type = 'highpass'; hpf.frequency.value = 80;
+    hpf.type = 'highpass'; hpf.frequency.value = 90;
     wash.connect(hpf); hpf.connect(lpf); lpf.connect(out);
     this._nodes.push(lpf, hpf);
 
     const swellLfo = ctx.createOscillator();
-    swellLfo.frequency.value = 0.1; swellLfo.type = 'sine';
-    const swellAmt = ctx.createGain(); swellAmt.gain.value = 400;
+    swellLfo.frequency.value = 0.09; swellLfo.type = 'sine';
+    const swellAmt = ctx.createGain(); swellAmt.gain.value = 300;
     swellLfo.connect(swellAmt); swellAmt.connect(lpf.frequency);
     swellLfo.start(); this._nodes.push(swellLfo, swellAmt);
 
-    const crash = this._pinkNoise(0.22);
+    const crash = this._pinkNoise(0.14);
     const cLpf = ctx.createBiquadFilter();
-    cLpf.type = 'bandpass'; cLpf.frequency.value = 700; cLpf.Q.value = 0.7;
+    cLpf.type = 'bandpass'; cLpf.frequency.value = 600; cLpf.Q.value = 0.6;
     const cEnv = ctx.createGain(); cEnv.gain.value = 0;
     crash.connect(cLpf); cLpf.connect(cEnv); cEnv.connect(out);
     this._nodes.push(cLpf, cEnv);
 
     const crashLfo = ctx.createOscillator();
-    crashLfo.frequency.value = 0.12; crashLfo.type = 'sine';
-    const crashAmt = ctx.createGain(); crashAmt.gain.value = 0.15;
+    crashLfo.frequency.value = 0.11; crashLfo.type = 'sine';
+    const crashAmt = ctx.createGain(); crashAmt.gain.value = 0.12;
     crashLfo.connect(crashAmt); crashAmt.connect(cEnv.gain);
     crashLfo.start(); this._nodes.push(crashLfo, crashAmt);
 
-    const wash2 = this._pinkNoise(0.3);
+    const wash2 = this._pinkNoise(0.18);
     const lpf2 = ctx.createBiquadFilter();
-    lpf2.type = 'lowpass'; lpf2.frequency.value = 900;
+    lpf2.type = 'lowpass'; lpf2.frequency.value = 750;
     if (ctx.createStereoPanner) {
-      const pan = ctx.createStereoPanner(); pan.pan.value = 0.5;
+      const pan = ctx.createStereoPanner(); pan.pan.value = 0.45;
       wash2.connect(lpf2); lpf2.connect(pan); pan.connect(out);
       this._nodes.push(pan);
     } else { wash2.connect(lpf2); lpf2.connect(out); }
     this._nodes.push(lpf2);
   }
 
-  _buildRain(gain = 0.45, freq = 2000, Q = 0.7) {
+  _buildRain(gain = 0.30, freq = 1600, Q = 0.55) {  // softer, darker
     const ctx = this._ctx, out = this._master;
     const noise = this._pinkNoise(gain);
     const bpf = ctx.createBiquadFilter();
     bpf.type = 'bandpass'; bpf.frequency.value = freq; bpf.Q.value = Q;
     const lpf = ctx.createBiquadFilter();
-    lpf.type = 'lowpass'; lpf.frequency.value = freq * 1.6;
+    lpf.type = 'lowpass'; lpf.frequency.value = freq * 1.4;
     noise.connect(bpf); bpf.connect(lpf); lpf.connect(out);
     this._nodes.push(bpf, lpf);
     const gustLfo = ctx.createOscillator();
-    gustLfo.frequency.value = 0.04; gustLfo.type = 'sine';
-    const gustAmt = ctx.createGain(); gustAmt.gain.value = 200;
+    gustLfo.frequency.value = 0.035; gustLfo.type = 'sine';
+    const gustAmt = ctx.createGain(); gustAmt.gain.value = 160;
     gustLfo.connect(gustAmt); gustAmt.connect(bpf.frequency);
     gustLfo.start(); this._nodes.push(gustLfo, gustAmt);
   }
@@ -172,20 +219,20 @@ class MeditationAudio {
     scheduleDrip();
   }
 
-  _buildWind(gain = 0.22, cutoff = 500) {
+  _buildWind(gain = 0.14, cutoff = 380) {  // softer – reverb makes it spacious
     const ctx = this._ctx, out = this._master;
     const noise = this._pinkNoise(gain);
     const lpf = ctx.createBiquadFilter();
     lpf.type = 'lowpass'; lpf.frequency.value = cutoff;
     const hpf = ctx.createBiquadFilter();
-    hpf.type = 'highpass'; hpf.frequency.value = 60;
+    hpf.type = 'highpass'; hpf.frequency.value = 55;
     noise.connect(hpf); hpf.connect(lpf);
-    const env = ctx.createGain(); env.gain.value = 0.7;
+    const env = ctx.createGain(); env.gain.value = 0.65;
     lpf.connect(env); env.connect(out);
     this._nodes.push(lpf, hpf, env);
     const gustLfo = ctx.createOscillator();
-    gustLfo.frequency.value = 0.06; gustLfo.type = 'sine';
-    const gustAmt = ctx.createGain(); gustAmt.gain.value = 0.25;
+    gustLfo.frequency.value = 0.05; gustLfo.type = 'sine';
+    const gustAmt = ctx.createGain(); gustAmt.gain.value = 0.22;
     gustLfo.connect(gustAmt); gustAmt.connect(env.gain);
     gustLfo.start(); this._nodes.push(gustLfo, gustAmt);
   }
