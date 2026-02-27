@@ -683,6 +683,42 @@ class MeditationAudio {
     });
   }
 
+  /* ── Recording ─────────────────────────────────────────────────────── */
+
+  startRecording() {
+    if (!this._ctx || !this._shelf) return;
+    if (this._mediaRecorder && this._mediaRecorder.state !== 'inactive') return;
+    const msd = this._ctx.createMediaStreamDestination();
+    this._shelf.connect(msd);
+    this._recMSD         = msd;
+    this._recordedChunks = [];
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus' : '';
+    const mr = new MediaRecorder(msd.stream, mimeType ? { mimeType } : {});
+    mr.ondataavailable = e => { if (e.data && e.data.size > 0) this._recordedChunks.push(e.data); };
+    mr.start(1000); // flush a chunk every second
+    this._mediaRecorder = mr;
+  }
+
+  stopRecording() {
+    if (this._mediaRecorder && this._mediaRecorder.state !== 'inactive') {
+      this._mediaRecorder.stop();
+    }
+    if (this._recMSD) {
+      try { this._shelf.disconnect(this._recMSD); } catch (_) {}
+      this._recMSD = null;
+    }
+  }
+
+  getRecordingBlob() {
+    if (this._mediaRecorder && this._mediaRecorder.state === 'recording') {
+      try { this._mediaRecorder.requestData(); } catch (_) {}
+    }
+    if (!this._recordedChunks || !this._recordedChunks.length) return null;
+    const mime = (this._mediaRecorder && this._mediaRecorder.mimeType) || 'audio/webm';
+    return new Blob(this._recordedChunks, { type: mime });
+  }
+
   /* ── Bell ──────────────────────────────────────────────────────────── */
 
   ringBell() {
