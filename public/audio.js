@@ -738,85 +738,294 @@ class MeditationAudio {
   }
 
   _buildChordPads(mood) {
-    // Base: C4 = 261.63 Hz — mid-range, clear and audible through speakers
     const C4 = 261.63;
     const st = n => C4 * Math.pow(2, n / 12);
 
     const progressions = {
-      peaceful:   { chords: [[0,4,7,11],[5,9,12,16],[9,12,16,19],[4,7,11,14]], durRange: [16, 20] }, // Cmaj7 Fmaj7 Am7 Em7
-      hopeful:    { chords: [[0,4,7],[7,11,14],[9,12,16],[5,9,12]],            durRange: [12, 16] }, // C G Am F
-      melancholy: { chords: [[9,12,16],[5,9,12],[9,12,16],[7,11,14]],          durRange: [15, 19] }, // Am F Am G
-      mysterious: { chords: [[2,5,9],[9,14,16],[5,9,12],[0,2,7]],              durRange: [16, 21] }, // Dm Asus4 F Csus2
-      ethereal:   { chords: [[0,2,7],[7,12,14],[5,7,12],[2,7,9]],              durRange: [18, 24] }, // Csus2 Gsus4 Fsus2 Dsus4
-      grounded:   { chords: [[0,7],[7,14],[5,12],[9,16]],                      durRange: [12, 16] }, // C5 G5 F5 A5 power chords
-      dramatic:   { chords: [[2,5,9],[2,5,8],[9,12,16],[4,8,11]],              durRange: [14, 18] }, // Dm Ddim Am E
-      joyful:     { chords: [[0,4,7],[5,9,12],[7,11,14],[0,4,12]],             durRange: [11, 15] }, // C F G C
+      peaceful:   { chords: [[0,4,7,11],[5,9,12,16],[9,12,16,19],[4,7,11,14]], durRange: [16, 20] },
+      hopeful:    { chords: [[0,4,7],[7,11,14],[9,12,16],[5,9,12]],            durRange: [12, 16] },
+      melancholy: { chords: [[9,12,16],[5,9,12],[9,12,16],[7,11,14]],          durRange: [15, 19] },
+      mysterious: { chords: [[2,5,9],[9,14,16],[5,9,12],[0,2,7]],              durRange: [16, 21] },
+      ethereal:   { chords: [[0,2,7],[7,12,14],[5,7,12],[2,7,9]],              durRange: [18, 24] },
+      grounded:   { chords: [[0,7],[7,14],[5,12],[9,16]],                      durRange: [12, 16] },
+      dramatic:   { chords: [[2,5,9],[2,5,8],[9,12,16],[4,8,11]],              durRange: [14, 18] },
+      joyful:     { chords: [[0,4,7],[5,9,12],[7,11,14],[0,4,12]],             durRange: [11, 15] },
     };
-    const prog = progressions[mood] || progressions.peaceful;
-    const chords = prog.chords;
+
+    // Mood → instrument pool; one instrument is randomly picked per chord
+    const moodInstruments = {
+      peaceful:   ['piano', 'flute', 'cello'],
+      hopeful:    ['piano', 'guitar', 'violin'],
+      melancholy: ['cello', 'violin', 'piano'],
+      mysterious: ['cello', 'oboe', 'violin'],
+      ethereal:   ['flute', 'violin', 'oboe'],
+      grounded:   ['bass', 'guitar', 'piano'],
+      dramatic:   ['cello', 'violin', 'bass'],
+      joyful:     ['piano', 'guitar', 'flute'],
+    };
+
+    const prog        = progressions[mood]    || progressions.peaceful;
+    const instruments = moodInstruments[mood] || moodInstruments.peaceful;
+    const chords      = prog.chords;
     const [dMin, dMax] = prog.durRange;
     const attack = 3.5, release = 4.0;
     let step = 0;
 
     const scheduleChord = () => {
       if (!this._musicGain) return;
-      const chord = chords[step % chords.length];
-      const durSecs = dMin + Math.random() * (dMax - dMin);
-      const now2 = this._ctx.currentTime;
-      const ctx = this._ctx;
+      const chord      = chords[step % chords.length];
+      const durSecs    = dMin + Math.random() * (dMax - dMin);
+      const now        = this._ctx.currentTime;
+      const instrument = instruments[Math.floor(Math.random() * instruments.length)];
+      const isBass     = instrument === 'bass';
 
-      chord.forEach(semitones => {
-        const baseFreq = st(semitones);
+      // Always anchor with a sub-bass root unless the selected instrument IS bass
+      if (!isBass) this._synthBass(st(chord[0]), now, durSecs, attack, release);
 
-        // Three detuned sawtooth oscillators per note → classic supersaw pad
-        // Sawtooth through a heavy LPF sounds warm and sustained, never bell-like
-        const detunes = [-8, 0, +8]; // cents
-        const oscGain = 0.06 / detunes.length;
-
-        detunes.forEach(cents => {
-          const osc = ctx.createOscillator();
-          osc.type = 'sawtooth';
-          osc.frequency.value = baseFreq * Math.pow(2, cents / 1200);
-
-          // Amplitude envelope
-          const g = ctx.createGain();
-          g.gain.setValueAtTime(0, now2);
-          g.gain.linearRampToValueAtTime(oscGain, now2 + attack);
-          g.gain.setValueAtTime(oscGain, now2 + durSecs - release);
-          g.gain.linearRampToValueAtTime(0, now2 + durSecs);
-
-          // Heavy lowpass — this is what turns a harsh saw into a warm pad
-          const lpf = ctx.createBiquadFilter();
-          lpf.type = 'lowpass';
-          lpf.frequency.value = 700;
-          lpf.Q.value = 1.8;
-
-          // Slow filter cutoff LFO for subtle movement (0.07–0.12 Hz)
-          const lfo = ctx.createOscillator();
-          lfo.type = 'sine';
-          lfo.frequency.value = 0.07 + Math.random() * 0.05;
-          const lfoAmt = ctx.createGain();
-          lfoAmt.gain.value = 250; // ±250 Hz sweep around the 700 Hz centre
-          lfo.connect(lfoAmt);
-          lfoAmt.connect(lpf.frequency);
-
-          osc.connect(g);
-          g.connect(lpf);
-          lpf.connect(this._musicGain);
-
-          osc.start(now2); osc.stop(now2 + durSecs + 0.1);
-          lfo.start(now2); lfo.stop(now2 + durSecs + 0.1);
-          this._musicNodes.push(osc, lfo, lfoAmt, g, lpf);
-        });
-      });
+      // Bass plays root only in bass register; all others play the full chord voicing
+      const notes = isBass ? [chord[0]] : chord;
+      const method = '_synth' + instrument.charAt(0).toUpperCase() + instrument.slice(1);
+      notes.forEach(semi => this[method](st(semi), now, durSecs, attack, release));
 
       step++;
-      const nextIn = (durSecs - release) * 1000; // crossfade into next chord
-      const t = setTimeout(scheduleChord, nextIn);
+      const t = setTimeout(scheduleChord, (durSecs - release) * 1000);
       this._musicTimeouts.push(t);
     };
 
     scheduleChord();
+  }
+
+  // ── Instrument synthesizers ────────────────────────────────────────────────
+
+  _synthPiano(freq, now, dur, atk, rel) {
+    // Additive harmonics — bright attack decays to warm sustain like a struck string
+    const ctx = this._ctx;
+    const harmonics = [1, 2, 3, 4, 5, 6];
+    const hLevels   = [1.0, 0.55, 0.30, 0.15, 0.08, 0.04];
+    harmonics.forEach((h, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq * h;
+
+      const g = ctx.createGain();
+      const peak = 0.020 * hLevels[i];
+      const hAtk = Math.min(atk, 0.8 + i * 0.4); // upper partials rise slower
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(peak, now + hAtk);
+      g.gain.setValueAtTime(peak * (i === 0 ? 1.0 : 0.55), now + dur - rel); // partials decay first
+      g.gain.linearRampToValueAtTime(0, now + dur);
+
+      // LPF sweeps from bright → warm (hammer brightness decays)
+      const lpf = ctx.createBiquadFilter();
+      lpf.type = 'lowpass';
+      lpf.frequency.setValueAtTime(6000, now);
+      lpf.frequency.exponentialRampToValueAtTime(Math.max(300, freq * 3.5), now + 4);
+
+      osc.connect(g); g.connect(lpf); lpf.connect(this._musicGain);
+      osc.start(now); osc.stop(now + dur + 0.1);
+      this._musicNodes.push(osc, g, lpf);
+    });
+  }
+
+  _synthGuitar(freq, now, dur, atk, rel) {
+    // Plucked string: triangle wave chorus, fast brightness decay to warm body
+    const ctx = this._ctx;
+    [-4, 0, +4].forEach(cents => { // slight chorus detune
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = freq * Math.pow(2, cents / 1200);
+
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.028, now + Math.min(atk, 1.2));
+      g.gain.setValueAtTime(0.019, now + dur - rel);
+      g.gain.linearRampToValueAtTime(0, now + dur);
+
+      // Bright pluck decays to warm body over ~2.5 s
+      const lpf = ctx.createBiquadFilter();
+      lpf.type = 'lowpass';
+      lpf.Q.value = 1.2;
+      lpf.frequency.setValueAtTime(3500, now);
+      lpf.frequency.exponentialRampToValueAtTime(Math.max(200, freq * 2), now + 2.5);
+
+      osc.connect(g); g.connect(lpf); lpf.connect(this._musicGain);
+      osc.start(now); osc.stop(now + dur + 0.1);
+      this._musicNodes.push(osc, g, lpf);
+    });
+  }
+
+  _synthBass(freq, now, dur, atk, rel) {
+    // Sine + triangle blend always played 2 octaves down for solid bass register
+    const ctx = this._ctx;
+    const bassFreq = freq / 4; // 2 octaves below input
+    [['sine', 0.055], ['triangle', 0.025]].forEach(([type, level]) => {
+      const osc = ctx.createOscillator();
+      osc.type = type;
+      osc.frequency.value = bassFreq;
+
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(level, now + Math.min(atk, 2.0));
+      g.gain.setValueAtTime(level, now + dur - rel);
+      g.gain.linearRampToValueAtTime(0, now + dur);
+
+      const lpf = ctx.createBiquadFilter();
+      lpf.type = 'lowpass';
+      lpf.frequency.value = 280;
+      lpf.Q.value = 0.8;
+
+      osc.connect(g); g.connect(lpf); lpf.connect(this._musicGain);
+      osc.start(now); osc.stop(now + dur + 0.1);
+      this._musicNodes.push(osc, g, lpf);
+    });
+  }
+
+  _synthViolin(freq, now, dur, atk, rel) {
+    // Bowed string: sawtooth + slow bow-pressure attack + vibrato
+    const ctx = this._ctx;
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.value = freq;
+
+    const vib = ctx.createOscillator();
+    vib.type = 'sine';
+    vib.frequency.value = 5.5 + Math.random() * 0.5;
+    const vibAmt = ctx.createGain();
+    vibAmt.gain.value = freq * 0.007; // ±~12 cents
+    vib.connect(vibAmt); vibAmt.connect(osc.frequency);
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.032, now + atk);
+    g.gain.setValueAtTime(0.032, now + dur - rel);
+    g.gain.linearRampToValueAtTime(0, now + dur);
+
+    const lpf = ctx.createBiquadFilter();
+    lpf.type = 'lowpass';
+    lpf.frequency.value = 1600;
+
+    osc.connect(g); g.connect(lpf); lpf.connect(this._musicGain);
+    osc.start(now); osc.stop(now + dur + 0.1);
+    vib.start(now); vib.stop(now + dur + 0.1);
+    this._musicNodes.push(osc, vib, vibAmt, g, lpf);
+  }
+
+  _synthCello(freq, now, dur, atk, rel) {
+    // Warmer and lower than violin: one octave down, heavier LPF, slower vibrato
+    const ctx = this._ctx;
+    const cFreq = freq / 2; // drop one octave into cello register
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.value = cFreq;
+
+    const vib = ctx.createOscillator();
+    vib.type = 'sine';
+    vib.frequency.value = 4.2 + Math.random() * 0.4;
+    const vibAmt = ctx.createGain();
+    vibAmt.gain.value = cFreq * 0.006;
+    vib.connect(vibAmt); vibAmt.connect(osc.frequency);
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.038, now + atk);
+    g.gain.setValueAtTime(0.038, now + dur - rel);
+    g.gain.linearRampToValueAtTime(0, now + dur);
+
+    const lpf = ctx.createBiquadFilter();
+    lpf.type = 'lowpass';
+    lpf.frequency.value = 900;
+    lpf.Q.value = 1.2;
+
+    osc.connect(g); g.connect(lpf); lpf.connect(this._musicGain);
+    osc.start(now); osc.stop(now + dur + 0.1);
+    vib.start(now); vib.stop(now + dur + 0.1);
+    this._musicNodes.push(osc, vib, vibAmt, g, lpf);
+  }
+
+  _synthOboe(freq, now, dur, atk, rel) {
+    // Double-reed nasal tone: square wave (odd harmonics) shaped by a BPF
+    const ctx = this._ctx;
+    const osc = ctx.createOscillator();
+    osc.type = 'square'; // rich in odd harmonics → reedy buzz
+    osc.frequency.value = freq;
+
+    const vib = ctx.createOscillator();
+    vib.type = 'sine';
+    vib.frequency.value = 5.2 + Math.random() * 0.4;
+    const vibAmt = ctx.createGain();
+    vibAmt.gain.value = freq * 0.004;
+    vib.connect(vibAmt); vibAmt.connect(osc.frequency);
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.018, now + Math.min(atk, 1.5));
+    g.gain.setValueAtTime(0.018, now + dur - rel);
+    g.gain.linearRampToValueAtTime(0, now + dur);
+
+    // BPF centred around 3rd harmonic gives characteristic nasal midrange peak
+    const bpf = ctx.createBiquadFilter();
+    bpf.type = 'bandpass';
+    bpf.frequency.value = freq * 2.5;
+    bpf.Q.value = 2.5;
+
+    const lpf = ctx.createBiquadFilter();
+    lpf.type = 'lowpass';
+    lpf.frequency.value = 2200;
+
+    osc.connect(g); g.connect(bpf); bpf.connect(lpf); lpf.connect(this._musicGain);
+    osc.start(now); osc.stop(now + dur + 0.1);
+    vib.start(now); vib.stop(now + dur + 0.1);
+    this._musicNodes.push(osc, vib, vibAmt, g, bpf, lpf);
+  }
+
+  _synthFlute(freq, now, dur, atk, rel) {
+    // Breathy + pure: near-pure sine + narrow-BPF noise for breath shimmer
+    const ctx = this._ctx;
+
+    // Tonal component
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+
+    const vib = ctx.createOscillator();
+    vib.type = 'sine';
+    vib.frequency.value = 4.5 + Math.random() * 0.5;
+    const vibAmt = ctx.createGain();
+    vibAmt.gain.value = freq * 0.004;
+    vib.connect(vibAmt); vibAmt.connect(osc.frequency);
+
+    const gTonal = ctx.createGain();
+    gTonal.gain.setValueAtTime(0, now);
+    gTonal.gain.linearRampToValueAtTime(0.040, now + atk);
+    gTonal.gain.setValueAtTime(0.040, now + dur - rel);
+    gTonal.gain.linearRampToValueAtTime(0, now + dur);
+
+    // Breathy noise through narrow BPF at the note frequency
+    const noiseLen = Math.ceil(ctx.sampleRate * 0.5);
+    const noiseBuf = ctx.createBuffer(1, noiseLen, ctx.sampleRate);
+    const nd = noiseBuf.getChannelData(0);
+    for (let i = 0; i < noiseLen; i++) nd[i] = Math.random() * 2 - 1;
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuf;
+    noise.loop = true;
+
+    const breathBpf = ctx.createBiquadFilter();
+    breathBpf.type = 'bandpass';
+    breathBpf.frequency.value = freq;
+    breathBpf.Q.value = 8;
+
+    const gBreath = ctx.createGain();
+    gBreath.gain.setValueAtTime(0, now);
+    gBreath.gain.linearRampToValueAtTime(0.012, now + atk);
+    gBreath.gain.setValueAtTime(0.012, now + dur - rel);
+    gBreath.gain.linearRampToValueAtTime(0, now + dur);
+
+    osc.connect(gTonal);       gTonal.connect(this._musicGain);
+    noise.connect(breathBpf);  breathBpf.connect(gBreath);  gBreath.connect(this._musicGain);
+    osc.start(now);   osc.stop(now + dur + 0.1);
+    vib.start(now);   vib.stop(now + dur + 0.1);
+    noise.start(now); noise.stop(now + dur + 0.1);
+    this._musicNodes.push(osc, vib, vibAmt, gTonal, noise, breathBpf, gBreath);
   }
 
   /* ── Fade / stop ───────────────────────────────────────────────────── */
