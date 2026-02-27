@@ -12,6 +12,9 @@ const PORT = process.env.PORT || 3000;
 
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
+// Server-level GitHub token used for guest sessions (no OAuth required).
+// Generate a classic Personal Access Token at https://github.com/settings/tokens
+const GITHUB_SERVER_TOKEN = process.env.GITHUB_TOKEN;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'deep-meditation-dev-secret';
 if (!process.env.SESSION_SECRET) {
   console.warn('WARNING: SESSION_SECRET is not set. Using insecure default – set it in production.');
@@ -137,6 +140,16 @@ app.post('/auth/logout', (req, res) => {
   });
 });
 
+// Guest login — creates an anonymous session backed by the server's own token
+app.get('/auth/guest', (req, res) => {
+  if (!GITHUB_SERVER_TOKEN) {
+    return res.redirect('/?error=guest_unavailable');
+  }
+  req.session.user = { login: 'guest', name: 'Guest', avatar_url: null, isGuest: true };
+  req.session.github_token = GITHUB_SERVER_TOKEN;
+  res.redirect('/');
+});
+
 // ── API ───────────────────────────────────────────────────────────────────────
 
 app.get('/api/user', (req, res) => {
@@ -144,8 +157,12 @@ app.get('/api/user', (req, res) => {
 });
 
 app.post('/api/meditation', async (req, res) => {
-  if (!req.session.user || !req.session.github_token) {
+  if (!req.session.user) {
     return res.status(401).json({ error: 'Not authenticated' });
+  }
+  const aiToken = req.session.github_token || GITHUB_SERVER_TOKEN;
+  if (!aiToken) {
+    return res.status(503).json({ error: 'AI service is not configured on this server.' });
   }
 
   const { topic, duration, mood } = req.body;
@@ -233,7 +250,7 @@ IMPORTANT: phase durations must sum to exactly ${totalSeconds} seconds.`;
     const aiRes = await fetch(AI_ENDPOINT, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${req.session.github_token}`,
+        'Authorization': `Bearer ${aiToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({

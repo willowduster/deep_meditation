@@ -113,6 +113,24 @@ canvas {
   transform: translateY(-2px);
 }
 
+.btn-guest {
+  display: inline-block;
+  margin-top: 0.9rem;
+  padding: 0.55rem 1.5rem;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--text-dim);
+  text-decoration: none;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: transparent;
+  transition: color 0.2s, border-color 0.2s;
+  opacity: 0;
+  animation: loginFadeInUp 0.7s 1.0s ease forwards;
+}
+.btn-guest:hover { color: var(--text); border-color: rgba(255,255,255,0.28); }
+
 .login-note {
   margin-top: 1.75rem;
   font-size: 0.8rem;

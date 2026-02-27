@@ -18,9 +18,10 @@ const App = {
     const params = new URLSearchParams(window.location.search);
     if (params.has('error')) {
       const msg = {
-        auth_cancelled: 'Login was cancelled.',
-        token_failed:   'Could not exchange token with GitHub.',
-        auth_error:     'An authentication error occurred.'
+        auth_cancelled:    'Login was cancelled.',
+        token_failed:      'Could not exchange token with GitHub.',
+        auth_error:        'An authentication error occurred.',
+        guest_unavailable: 'Guest access is not enabled on this server.',
       }[params.get('error')] || 'Login failed.';
       document.getElementById('login-error').textContent = msg;
       document.getElementById('login-error').classList.remove('hidden');
@@ -115,8 +116,16 @@ const App = {
     this._setView('setup');
     this._startBg('bg-canvas-setup');
     if (this.user) {
-      document.getElementById('user-name').textContent  = this.user.name;
-      document.getElementById('user-avatar').src        = this.user.avatar_url;
+      const nameEl   = document.getElementById('user-name');
+      const avatarEl = document.getElementById('user-avatar');
+      nameEl.textContent = this.user.name;
+      if (this.user.avatar_url) {
+        avatarEl.src = this.user.avatar_url;
+        avatarEl.style.display = '';
+      } else {
+        // Guest — hide the avatar image
+        avatarEl.style.display = 'none';
+      }
     }
     // Reset form state
     document.getElementById('meditation-topic').value = '';
