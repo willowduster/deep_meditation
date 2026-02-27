@@ -5,7 +5,6 @@ const App = {
   user:            null,
   duration:        10,
   mood:            'peaceful',
-  includeMusic:    false,
   meditationData:  null,
   _bgCanvas:       null,
   _medCanvas:      null,
@@ -126,7 +125,6 @@ const App = {
     document.getElementById('setup-error').classList.add('hidden');
     document.getElementById('loading').classList.add('hidden');
     document.getElementById('meditation-mood').value = this.mood;
-    document.getElementById('include-music').checked  = this.includeMusic;
   },
 
   // ── Begin meditation ──────────────────────────────────────────────────
@@ -143,9 +141,8 @@ const App = {
     // Browsers block AudioContext.resume() if called outside a gesture.
     this._audio._ensureContext().catch(() => {});
 
-    // Capture mood + music preference at click time
-    this.mood         = document.getElementById('meditation-mood').value || 'peaceful';
-    this.includeMusic = document.getElementById('include-music').checked;
+    // Capture mood at click time
+    this.mood = document.getElementById('meditation-mood').value || 'peaceful';
 
     beginBtn.disabled = true;
     loading.classList.remove('hidden');
@@ -193,7 +190,7 @@ const App = {
       ? data.soundLayers
       : (data.ambientSound ? [data.ambientSound] : ['cosmic_drone']);
     this._audio.start(layers).then(() => this._audio.ringBell()).catch(() => {});
-    if (this.includeMusic) this._audio.startMusic(this.mood).catch(() => {});
+    this._audio.startMusic(this.mood).catch(() => {});
 
     // Run phases
     this._sessionActive = true;
