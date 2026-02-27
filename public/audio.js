@@ -24,6 +24,7 @@ class MeditationAudio {
 
       const shelf = this._ctx.createBiquadFilter();
       shelf.type = 'highshelf'; shelf.frequency.value = 6000; shelf.gain.value = -10;
+      this._shelf = shelf; // kept for recording tap
 
       const dryGain = this._ctx.createGain(); dryGain.gain.value = 0.38;
       const wetGain = this._ctx.createGain(); wetGain.gain.value = 0.72;

@@ -405,6 +405,108 @@ textarea::placeholder { color: var(--text-dim); }
 }
 .btn-end:hover { border-color: rgba(255, 255, 255, 0.4); color: var(--text); }
 
+.footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.btn-download {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  flex-shrink: 0;
+}
+.btn-download:hover { border-color: var(--primary); color: var(--text); background: rgba(124,107,255,0.12); }
+
+/* ── Download modal ────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: modalFadeIn 0.2s ease;
+}
+.modal-overlay.hidden { display: none; }
+@keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-box {
+  position: relative;
+  background: rgba(18, 15, 40, 0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 1.25rem;
+  padding: 2.25rem 2rem 1.75rem;
+  width: min(400px, calc(100vw - 2rem));
+  box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  animation: modalSlideUp 0.25s ease;
+}
+@keyframes modalSlideUp { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.modal-close {
+  position: absolute; top: 1rem; right: 1rem;
+  background: none; border: none;
+  color: var(--text-dim); font-size: 1.1rem;
+  cursor: pointer; line-height: 1;
+  padding: 0.25rem 0.4rem;
+  border-radius: 50%;
+  transition: color 0.2s, background 0.2s;
+}
+.modal-close:hover { color: var(--text); background: rgba(255,255,255,0.08); }
+
+.modal-heading {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 1.5rem; font-weight: 400;
+  margin: 0 0 0.4rem;
+}
+.modal-sub {
+  font-size: 0.85rem; color: var(--text-dim);
+  margin: 0 0 1.5rem;
+}
+
+.modal-formats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.fmt-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: var(--radius-pill);
+  padding: 0.75rem 1.25rem;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text);
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+}
+.fmt-btn:hover:not(:disabled) {
+  background: var(--surface-hi);
+  border-color: var(--primary);
+  transform: translateX(3px);
+}
+.fmt-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.fmt-name { font-weight: 500; font-size: 0.95rem; letter-spacing: 0.04em; }
+.fmt-info { font-size: 0.78rem; color: var(--text-dim); }
+
+.modal-status {
+  margin-top: 1.1rem;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+.modal-status.hidden { display: none; }
+
 /* ── Complete ──────────────────────────────────────────────────────────── */
 .complete-content {
   position: relative;

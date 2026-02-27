@@ -90,6 +90,16 @@ const App = {
     // End session
     document.getElementById('btn-end').addEventListener('click', () => this._endMeditation());
 
+    // Download recording
+    document.getElementById('btn-download').addEventListener('click', () => this._openDownloadModal());
+    document.getElementById('modal-close').addEventListener('click', () => this._closeDownloadModal());
+    document.getElementById('download-modal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) this._closeDownloadModal();
+    });
+    document.querySelectorAll('.fmt-btn').forEach(btn => {
+      btn.addEventListener('click', () => this._downloadAs(btn.dataset.format));
+    });
+
     // Meditate again
     document.getElementById('btn-again').addEventListener('click', () => this._showSetup());
   },
@@ -204,7 +214,7 @@ const App = {
     const layers = Array.isArray(data.soundLayers) && data.soundLayers.length
       ? data.soundLayers
       : (data.ambientSound ? [data.ambientSound] : ['cosmic_drone']);
-    this._audio.start(layers).catch(() => {});
+    this._audio.start(layers).then(() => this._audio.startRecording()).catch(() => {});
     this._audio.startMusic(this.mood).catch(() => {});
 
     // Run phases
@@ -262,6 +272,7 @@ const App = {
 
   _completeSession(total) {
     this._sessionActive = false;
+    this._audio.stopRecording();
     setTimeout(() => { this._audio.fadeOut(3); this._audio.stopMusic(3); }, 1000);
     setTimeout(() => { if (this._medCanvas) { this._medCanvas.stop(); this._medCanvas = null; } }, 3500);
 
@@ -279,10 +290,79 @@ const App = {
   _endMeditation() {
     this._sessionActive = false;
     if (this._cancelPhase) { this._cancelPhase(); this._cancelPhase = null; }
+    this._audio.stopRecording();
     this._audio.stop();
     this._audio.stopMusic(0);
     if (this._medCanvas) { this._medCanvas.stop(); this._medCanvas = null; }
     this._showSetup();
+  },
+
+  _openDownloadModal() {
+    document.getElementById('modal-status').classList.add('hidden');
+    document.querySelectorAll('.fmt-btn').forEach(b => { b.disabled = false; });
+    document.getElementById('download-modal').classList.remove('hidden');
+  },
+
+  _closeDownloadModal() {
+    document.getElementById('download-modal').classList.add('hidden');
+  },
+
+  async _downloadAs(format) {
+    // Flush any buffered MediaRecorder data, then snapshot all recorded chunks
+    const blob = this._audio.getRecordingBlob();
+    if (!blob) {
+      const st = document.getElementById('modal-status');
+      st.textContent = 'No recording available yet — the session may still be starting.';
+      st.classList.remove('hidden');
+      return;
+    }
+    const st = document.getElementById('modal-status');
+    st.textContent = 'Encoding… this may take a moment for longer sessions.';
+    st.classList.remove('hidden');
+    document.querySelectorAll('.fmt-btn').forEach(b => { b.disabled = true; });
+    const raw   = (this.meditationData && this.meditationData.title) || 'meditation';
+    const fname = raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    try {
+      await AudioExport.exportBlob(blob, format, fname, this._audio._ctx);
+      this._closeDownloadModal();
+    } catch (err) {
+      st.textContent = 'Export failed: ' + err.message;
+      document.querySelectorAll('.fmt-btn').forEach(b => { b.disabled = false; });
+    }
+  },
+
+  // ── Download modal ────────────────────────────────────────────────────
+  _openDownloadModal() {
+    document.getElementById('modal-status').classList.add('hidden');
+    document.querySelectorAll('.fmt-btn').forEach(b => { b.disabled = false; });
+    document.getElementById('download-modal').classList.remove('hidden');
+  },
+
+  _closeDownloadModal() {
+    document.getElementById('download-modal').classList.add('hidden');
+  },
+
+  async _downloadAs(format) {
+    const blob = this._audio.getRecordingBlob();
+    if (!blob) {
+      const st = document.getElementById('modal-status');
+      st.textContent = 'No recording available yet — the session may still be starting.';
+      st.classList.remove('hidden');
+      return;
+    }
+    const st = document.getElementById('modal-status');
+    st.textContent = 'Encoding… this may take a moment for longer sessions.';
+    st.classList.remove('hidden');
+    document.querySelectorAll('.fmt-btn').forEach(b => { b.disabled = true; });
+    const raw   = (this.meditationData && this.meditationData.title) || 'meditation';
+    const fname = raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    try {
+      await AudioExport.exportBlob(blob, format, fname, this._audio._ctx);
+      this._closeDownloadModal();
+    } catch (err) {
+      st.textContent = 'Export failed: ' + err.message;
+      document.querySelectorAll('.fmt-btn').forEach(b => { b.disabled = false; });
+    }
   },
 
   // ── Helpers ───────────────────────────────────────────────────────────
