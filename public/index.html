@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deep Meditation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Login view ─────────────────────────────────────────────────────── -->
+  <div id="view-login" class="view">
+    <canvas id="bg-canvas"></canvas>
+    <div class="login-content">
+      <h1 class="brand-title">Deep<br /><span>Meditation</span></h1>
+      <p class="tagline">Describe what you wish to explore.<br />Receive a personalised meditation crafted just for you.</p>
+      <a href="/auth/github" class="btn-github">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+        </svg>
+        Continue with GitHub
+      </a>
+      <a href="/auth/guest" class="btn-guest">Continue as Guest</a>
+      <p class="login-note">Your sessions are never stored on the server.</p>
+      <div id="login-error" class="error-msg hidden"></div>
+    </div>
+  </div>
+
+  <!-- ── Setup view ─────────────────────────────────────────────────────── -->
+  <div id="view-setup" class="view hidden">
+    <canvas id="bg-canvas-setup"></canvas>
+    <div class="setup-content">
+      <header class="setup-header">
+        <div class="user-info">
+          <img id="user-avatar" src="" alt="User avatar" width="36" height="36" />
+          <span id="user-name"></span>
+        </div>
+        <button id="btn-logout" class="btn-link">Sign out</button>
+      </header>
+
+      <h1 class="setup-heading">What shall we<br /><span>meditate on?</span></h1>
+
+      <div class="form-group">
+        <textarea
+          id="meditation-topic"
+          placeholder="Describe your intention… e.g. release work stress, cultivate gratitude, calm an anxious mind, spark creativity"
+          maxlength="500"
+          rows="3"
+          aria-label="Meditation topic"
+        ></textarea>
+        <div id="topic-counter" class="char-counter">0 / 500</div>
+      </div>
+
+      <div class="duration-group">
+        <label class="duration-label">Duration</label>
+        <div class="duration-options" role="group" aria-label="Select duration">
+          <button class="duration-btn" data-value="5">5 min</button>
+          <button class="duration-btn active" data-value="10">10 min</button>
+          <button class="duration-btn" data-value="15">15 min</button>
+          <button class="duration-btn" data-value="20">20 min</button>
+          <button class="duration-btn" data-value="30">30 min</button>
+        </div>
+      </div>
+
+      <div class="mood-group">
+        <label class="duration-label">Mood</label>
+        <div class="mood-btn-group" role="group" aria-label="Select mood">
+          <button class="mood-btn active" data-mood="peaceful">Peaceful</button>
+          <button class="mood-btn" data-mood="hopeful">Hopeful</button>
+          <button class="mood-btn" data-mood="melancholy">Melancholy</button>
+          <button class="mood-btn" data-mood="mysterious">Mysterious</button>
+          <button class="mood-btn" data-mood="ethereal">Ethereal</button>
+          <button class="mood-btn" data-mood="grounded">Grounded</button>
+          <button class="mood-btn" data-mood="dramatic">Dramatic</button>
+          <button class="mood-btn" data-mood="joyful">Joyful</button>
+        </div>
+      </div>
+
+      <button id="btn-begin" class="btn-primary" disabled>Begin Meditation</button>
+
+      <div id="loading" class="loading hidden" aria-live="polite">
+        <div class="loading-ring"></div>
+        <span>Crafting your personalised meditation…</span>
+      </div>
+
+      <div id="setup-error" class="error-msg hidden" role="alert"></div>
+    </div>
+  </div>
+
+  <!-- ── Meditation view ────────────────────────────────────────────────── -->
+  <div id="view-meditation" class="view hidden" aria-live="polite">
+    <canvas id="meditation-canvas"></canvas>
+    <div class="meditation-ui">
+      <div class="meditation-header">
+        <span id="meditation-title" class="med-title"></span>
+        <div class="meditation-timer">
+          <span id="timer-elapsed">0:00</span>
+          <span class="timer-sep">/</span>
+          <span id="timer-total">0:00</span>
+        </div>
+      </div>
+
+      <div class="phase-text-container">
+        <p id="phase-text" class="phase-text"></p>
+      </div>
+
+      <div class="meditation-footer">
+        <span id="phase-name" class="phase-name"></span>
+        <div class="footer-actions">
+          <button id="btn-download" class="btn-download" title="Save recording">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="18" height="18">
+              <path d="M12 3v12M8 11l4 4 4-4M3 17v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/>
+            </svg>
+          </button>
+          <button id="btn-end" class="btn-end">End Session</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Complete view ──────────────────────────────────────────────────── -->
+  <div id="view-complete" class="view hidden">
+    <canvas id="bg-canvas-complete"></canvas>
+    <div class="complete-content">
+      <div class="complete-star" aria-hidden="true">✦</div>
+      <h1>Session Complete</h1>
+      <p id="complete-duration" class="complete-stats"></p>
+      <blockquote id="complete-affirmation" class="affirmation"></blockquote>
+      <button id="btn-again" class="btn-primary">Meditate Again</button>
+    </div>
+  </div>
+
+  <!-- ── Download modal ────────────────────────────────────────────── -->
+  <div id="download-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-heading">
+    <div class="modal-box">
+      <button id="modal-close" class="modal-close" aria-label="Close">✕</button>
+      <h2 id="modal-heading" class="modal-heading">Save Recording</h2>
+      <p class="modal-sub">Choose a format to download your session audio.</p>
+      <div class="modal-formats">
+        <button class="fmt-btn" data-format="flac">
+          <span class="fmt-name">FLAC</span>
+          <span class="fmt-info">Lossless · Full quality</span>
+        </button>
+        <button class="fmt-btn" data-format="wav">
+          <span class="fmt-name">WAV</span>
+          <span class="fmt-info">Lossless · Universal</span>
+        </button>
+        <button class="fmt-btn" data-format="mp3">
+          <span class="fmt-name">MP3</span>
+          <span class="fmt-info">256 kbps · Smallest file</span>
+        </button>
+      </div>
+      <p id="modal-status" class="modal-status hidden"></p>
+    </div>
+  </div>
+
+  <script src="audio-export.js"></script>
+  <script src="audio.js"></script>
+  <script src="meditation.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
