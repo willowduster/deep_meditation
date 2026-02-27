@@ -706,7 +706,7 @@ class MeditationAudio {
     const ctx = this._ctx;
     this._musicGain = ctx.createGain();
     this._musicGain.gain.setValueAtTime(0, ctx.currentTime);
-    this._musicGain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 5);
+    this._musicGain.gain.linearRampToValueAtTime(1.0, ctx.currentTime + 5);
     this._musicGain.connect(this._master);
     this._musicNodes = [this._musicGain];
     this._musicTimeouts = [];
@@ -808,7 +808,7 @@ class MeditationAudio {
       osc.frequency.value = freq * h;
 
       const g = ctx.createGain();
-      const peak = 0.020 * hLevels[i];
+      const peak = 0.08 * hLevels[i];
       const hAtk = Math.min(atk, 0.8 + i * 0.4); // upper partials rise slower
       g.gain.setValueAtTime(0, now);
       g.gain.linearRampToValueAtTime(peak, now + hAtk);
@@ -837,8 +837,8 @@ class MeditationAudio {
 
       const g = ctx.createGain();
       g.gain.setValueAtTime(0, now);
-      g.gain.linearRampToValueAtTime(0.028, now + Math.min(atk, 1.2));
-      g.gain.setValueAtTime(0.019, now + dur - rel);
+      g.gain.linearRampToValueAtTime(0.11, now + Math.min(atk, 1.2));
+      g.gain.setValueAtTime(0.075, now + dur - rel);
       g.gain.linearRampToValueAtTime(0, now + dur);
 
       // Bright pluck decays to warm body over ~2.5 s
@@ -858,7 +858,7 @@ class MeditationAudio {
     // Sine + triangle blend always played 2 octaves down for solid bass register
     const ctx = this._ctx;
     const bassFreq = freq / 4; // 2 octaves below input
-    [['sine', 0.055], ['triangle', 0.025]].forEach(([type, level]) => {
+    [['sine', 0.22], ['triangle', 0.10]].forEach(([type, level]) => {
       const osc = ctx.createOscillator();
       osc.type = type;
       osc.frequency.value = bassFreq;
@@ -896,8 +896,8 @@ class MeditationAudio {
 
     const g = ctx.createGain();
     g.gain.setValueAtTime(0, now);
-    g.gain.linearRampToValueAtTime(0.032, now + atk);
-    g.gain.setValueAtTime(0.032, now + dur - rel);
+    g.gain.linearRampToValueAtTime(0.13, now + atk);
+    g.gain.setValueAtTime(0.13, now + dur - rel);
     g.gain.linearRampToValueAtTime(0, now + dur);
 
     const lpf = ctx.createBiquadFilter();
@@ -927,8 +927,8 @@ class MeditationAudio {
 
     const g = ctx.createGain();
     g.gain.setValueAtTime(0, now);
-    g.gain.linearRampToValueAtTime(0.038, now + atk);
-    g.gain.setValueAtTime(0.038, now + dur - rel);
+    g.gain.linearRampToValueAtTime(0.15, now + atk);
+    g.gain.setValueAtTime(0.15, now + dur - rel);
     g.gain.linearRampToValueAtTime(0, now + dur);
 
     const lpf = ctx.createBiquadFilter();
@@ -958,8 +958,8 @@ class MeditationAudio {
 
     const g = ctx.createGain();
     g.gain.setValueAtTime(0, now);
-    g.gain.linearRampToValueAtTime(0.018, now + Math.min(atk, 1.5));
-    g.gain.setValueAtTime(0.018, now + dur - rel);
+    g.gain.linearRampToValueAtTime(0.07, now + Math.min(atk, 1.5));
+    g.gain.setValueAtTime(0.07, now + dur - rel);
     g.gain.linearRampToValueAtTime(0, now + dur);
 
     // BPF centred around 3rd harmonic gives characteristic nasal midrange peak
@@ -996,8 +996,8 @@ class MeditationAudio {
 
     const gTonal = ctx.createGain();
     gTonal.gain.setValueAtTime(0, now);
-    gTonal.gain.linearRampToValueAtTime(0.040, now + atk);
-    gTonal.gain.setValueAtTime(0.040, now + dur - rel);
+    gTonal.gain.linearRampToValueAtTime(0.15, now + atk);
+    gTonal.gain.setValueAtTime(0.15, now + dur - rel);
     gTonal.gain.linearRampToValueAtTime(0, now + dur);
 
     // Breathy noise through narrow BPF at the note frequency
@@ -1016,8 +1016,8 @@ class MeditationAudio {
 
     const gBreath = ctx.createGain();
     gBreath.gain.setValueAtTime(0, now);
-    gBreath.gain.linearRampToValueAtTime(0.012, now + atk);
-    gBreath.gain.setValueAtTime(0.012, now + dur - rel);
+    gBreath.gain.linearRampToValueAtTime(0.048, now + atk);
+    gBreath.gain.setValueAtTime(0.048, now + dur - rel);
     gBreath.gain.linearRampToValueAtTime(0, now + dur);
 
     osc.connect(gTonal);       gTonal.connect(this._musicGain);
