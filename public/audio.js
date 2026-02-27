@@ -18,20 +18,29 @@ class MeditationAudio {
       this._master.gain.value = 0;
 
       // ── Permanent output chain (never added to this._nodes) ──────────
-      // master → [dryGain, reverbSend → convolver → wetGain] → shelf → out
+      // master → [dryGain,
+      //           convolver → wetGain,
+      //           delayBus → delayReturnGain] → shelf → out
 
       const shelf = this._ctx.createBiquadFilter();
       shelf.type = 'highshelf'; shelf.frequency.value = 6000; shelf.gain.value = -10;
 
-      const dryGain = this._ctx.createGain();  dryGain.gain.value  = 0.38;
-      const wetGain = this._ctx.createGain();  wetGain.gain.value  = 0.72;
+      const dryGain = this._ctx.createGain(); dryGain.gain.value = 0.38;
+      const wetGain = this._ctx.createGain(); wetGain.gain.value = 0.72;
 
-      // ConvolverNode with a synthetic large-room impulse response
+      // Convolution reverb
       const convolver = this._ctx.createConvolver();
       convolver.buffer = this._buildIR(this._ctx, 4.2, 0.015);
 
-      this._master.connect(dryGain);    dryGain.connect(shelf);
-      this._master.connect(convolver);  convolver.connect(wetGain); wetGain.connect(shelf);
+      // Ping-pong delay with stereo swirl
+      const delayReturn = this._ctx.createGain(); delayReturn.gain.value = 0.30;
+      this._buildDelayBus(this._ctx, delayReturn);
+
+      this._master.connect(dryGain);          dryGain.connect(shelf);
+      this._master.connect(convolver);        convolver.connect(wetGain); wetGain.connect(shelf);
+      this._master.connect(this._delayL);     // seed ping-pong input
+      this._master.connect(this._delayR);     // both sides so pings overlap from bar 1
+      delayReturn.connect(shelf);
       shelf.connect(this._ctx.destination);
       // NOTE: all above are permanent infrastructure – do NOT push to this._nodes
     }
@@ -74,6 +83,80 @@ class MeditationAudio {
       }
     }
     return buf;
+  }
+
+  /**
+   * Ping-pong delay bus with slow stereo swirl and swell amplitude.
+   * Quarter-note grid at a randomised low BPM (52–68).
+   * Wires: inputNode (= this._master tap) → delayL ⇄ delayR → panL/panR → swellGain → outputNode
+   * @param {AudioContext} ctx
+   * @param {AudioNode}    outputNode  where the wet delay signal is delivered
+   */
+  _buildDelayBus(ctx, outputNode) {
+    const bpm         = 52 + Math.random() * 16;        // 52–68 BPM
+    const quarter     = 60 / bpm;                       // 882–1154 ms per beat
+
+    // ── Delay lines ──────────────────────────────────────────────────
+    const delayL = ctx.createDelay(2.5); delayL.delayTime.value = quarter;
+    const delayR = ctx.createDelay(2.5); delayR.delayTime.value = quarter * 1.0018; // micro-detune
+
+    // Very subtle delay-time wobble — 1.5 ms depth, ~0.06 Hz — gives the
+    // "swimming" quality without audible pitch-warping
+    const wobbleLfo = ctx.createOscillator();
+    wobbleLfo.type = 'sine'; wobbleLfo.frequency.value = 0.06 + Math.random() * 0.03;
+    const wobbleAmtL = ctx.createGain(); wobbleAmtL.gain.value = 0.0015;
+    const wobbleAmtR = ctx.createGain(); wobbleAmtR.gain.value = -0.0015; // inverted for movement
+    wobbleLfo.connect(wobbleAmtL); wobbleAmtL.connect(delayL.delayTime);
+    wobbleLfo.connect(wobbleAmtR); wobbleAmtR.connect(delayR.delayTime);
+    wobbleLfo.start();
+
+    // ── Ping-pong feedback ───────────────────────────────────────────
+    // L → R → L crossfeed so repeats alternate sides
+    const fbL = ctx.createGain(); fbL.gain.value = 0.60; // fades over ~7 repeats
+    const fbR = ctx.createGain(); fbR.gain.value = 0.58;
+    delayL.connect(fbL); fbL.connect(delayR);
+    delayR.connect(fbR); fbR.connect(delayL);
+
+    // ── Slow stereo panning swirl ─────────────────────────────────────
+    const panL = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    const panR = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    if (panL) { panL.pan.value = -0.65; panR.pan.value = 0.65; }
+
+    // Single LFO drives both panners in opposite directions so they
+    // slowly chase each other around the stereo field (~14–25 s cycle)
+    const panLfo = ctx.createOscillator();
+    panLfo.type = 'sine'; panLfo.frequency.value = 0.04 + Math.random() * 0.03;
+    if (panL) {
+      const panAmtL = ctx.createGain(); panAmtL.gain.value =  0.65;
+      const panAmtR = ctx.createGain(); panAmtR.gain.value = -0.65;
+      panLfo.connect(panAmtL); panAmtL.connect(panL.pan);
+      panLfo.connect(panAmtR); panAmtR.connect(panR.pan);
+    }
+    panLfo.start();
+
+    // ── Swell gain — slow amplitude breathing (~30–50 s cycle) ───────
+    const swellGain = ctx.createGain(); swellGain.gain.value = 0.55;
+    const swellLfo  = ctx.createOscillator();
+    swellLfo.type = 'sine'; swellLfo.frequency.value = 0.022 + Math.random() * 0.018;
+    const swellAmt  = ctx.createGain(); swellAmt.gain.value = 0.30; // ±30% swell
+    swellLfo.connect(swellAmt); swellAmt.connect(swellGain.gain);
+    swellLfo.start();
+
+    // ── Wire everything up ───────────────────────────────────────────
+    // The "input" is this._master being connected to delayL + delayR
+    // externally (both sides seeded so pings overlap from the start)
+    if (panL) {
+      delayL.connect(panL); panL.connect(swellGain);
+      delayR.connect(panR); panR.connect(swellGain);
+    } else {
+      delayL.connect(swellGain);
+      delayR.connect(swellGain);
+    }
+    swellGain.connect(outputNode);
+
+    // Store delay inputs on the instance so _ensureContext can wire master → them
+    this._delayL = delayL;
+    this._delayR = delayR;
   }
 
   /* ── Public API ────────────────────────────────────────────────────── */
