@@ -189,7 +189,7 @@ const App = {
     const layers = Array.isArray(data.soundLayers) && data.soundLayers.length
       ? data.soundLayers
       : (data.ambientSound ? [data.ambientSound] : ['cosmic_drone']);
-    this._audio.start(layers).then(() => this._audio.ringBell()).catch(() => {});
+    this._audio.start(layers).catch(() => {});
     this._audio.startMusic(this.mood).catch(() => {});
 
     // Run phases
@@ -226,7 +226,7 @@ const App = {
 
         // Breath pattern + ring
         if (ph.breathPattern) this._medCanvas.setBreathPattern(ph.breathPattern);
-        if (i > 0) { this._medCanvas.triggerRing(); this._audio.ringBell(); }
+        if (i > 0) { this._medCanvas.triggerRing(); }
 
         // Hold for the phase duration (minus the 600 ms fade already waited)
         await this._sleep(Math.max(0, (ph.duration || 0) * 1000 - 600));
@@ -247,7 +247,6 @@ const App = {
 
   _completeSession(total) {
     this._sessionActive = false;
-    this._audio.ringBell();
     setTimeout(() => { this._audio.fadeOut(3); this._audio.stopMusic(3); }, 1000);
     setTimeout(() => { if (this._medCanvas) { this._medCanvas.stop(); this._medCanvas = null; } }, 3500);
 
