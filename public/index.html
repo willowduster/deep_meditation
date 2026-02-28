@@ -102,11 +102,6 @@
 
       <button id="btn-begin" class="btn-primary" disabled>Begin Meditation</button>
 
-      <div id="loading" class="loading hidden" aria-live="polite">
-        <div class="loading-ring"></div>
-        <span>Crafting your personalised meditation…</span>
-      </div>
-
       <div id="setup-error" class="error-msg hidden" role="alert"></div>
     </div>
   </div>
@@ -151,6 +146,14 @@
       <p id="complete-duration" class="complete-stats"></p>
       <blockquote id="complete-affirmation" class="affirmation"></blockquote>
       <button id="btn-again" class="btn-primary">Meditate Again</button>
+    </div>
+  </div>
+
+  <!-- ── Preparing meditation modal ─────────────────────────────────── -->
+  <div id="loading" class="loading hidden" role="dialog" aria-modal="true" aria-live="polite" aria-label="Preparing meditation">
+    <div class="loading-inner">
+      <div class="loading-ring"></div>
+      <p class="loading-label">Preparing your meditation…</p>
     </div>
   </div>
 
