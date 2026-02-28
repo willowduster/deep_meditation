@@ -218,6 +218,7 @@ const App = {
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
 
       this.meditationData = body;
+      loading.classList.add('hidden');
       this._startSession();
     } catch (err) {
       errEl.textContent = `${err.message}`;
