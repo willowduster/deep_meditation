@@ -113,6 +113,29 @@ const App = {
 
     // Meditate again
     document.getElementById('btn-again').addEventListener('click', () => this._showSetup());
+
+    // Fullscreen toggle
+    const fsBtn = document.getElementById('btn-fullscreen');
+    fsBtn.addEventListener('click', () => this._toggleFullscreen());
+    document.addEventListener('fullscreenchange', () => this._onFullscreenChange());
+    document.addEventListener('webkitfullscreenchange', () => this._onFullscreenChange());
+  },
+
+  _toggleFullscreen() {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      const el = document.documentElement;
+      (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+    } else {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    }
+  },
+
+  _onFullscreenChange() {
+    const active = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    document.body.classList.toggle('is-fullscreen', active);
+    const btn = document.getElementById('btn-fullscreen');
+    btn.setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
+    btn.setAttribute('title',      active ? 'Exit fullscreen' : 'Fullscreen');
   },
 
   // ── Views ─────────────────────────────────────────────────────────────

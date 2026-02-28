@@ -272,6 +272,33 @@ textarea::placeholder { color: var(--text-dim); }
   box-shadow: 0 0 0 2px rgba(124, 107, 255, 0.12);
 }
 
+/* ── Fullscreen button ──────────────────────────────────────────────────── */
+.btn-fullscreen {
+  position: fixed;
+  bottom: max(1rem, calc(env(safe-area-inset-bottom) + 0.6rem));
+  right:  max(1rem, calc(env(safe-area-inset-right)  + 0.6rem));
+  z-index: 300;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 8px;
+  color: rgba(232, 228, 255, 0.45);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 0;
+}
+.btn-fullscreen:hover {
+  background: rgba(124, 107, 255, 0.15);
+  border-color: rgba(124, 107, 255, 0.4);
+  color: var(--text);
+}
+.btn-fullscreen .icon-fs-exit { display: none; }
+body.is-fullscreen .btn-fullscreen .icon-fs-enter { display: none; }
+body.is-fullscreen .btn-fullscreen .icon-fs-exit  { display: block; }
+
 /* ── Shared buttons ────────────────────────────────────────────────────── */
 .btn-primary {
   background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
