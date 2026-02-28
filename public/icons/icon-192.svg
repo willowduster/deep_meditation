@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="40" fill="#07071a"/>
+  <!-- Outer glow ring -->
+  <circle cx="96" cy="96" r="72" fill="none" stroke="#7c6bff" stroke-width="2" opacity="0.3"/>
+  <circle cx="96" cy="96" r="58" fill="none" stroke="#7c6bff" stroke-width="1.5" opacity="0.5"/>
+  <!-- Main circle -->
+  <circle cx="96" cy="96" r="44" fill="none" stroke="#7c6bff" stroke-width="3"/>
+  <!-- Inner fill -->
+  <circle cx="96" cy="96" r="38" fill="url(#grad)"/>
+  <!-- Radial gradient -->
+  <defs>
+    <radialGradient id="grad" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#a89cff" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#7c6bff" stop-opacity="0.15"/>
+    </radialGradient>
+  </defs>
+  <!-- Centre dot -->
+  <circle cx="96" cy="96" r="5" fill="#a89cff" opacity="0.9"/>
+</svg>

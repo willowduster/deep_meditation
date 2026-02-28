@@ -1,0 +1,16 @@
+<!-- Maskable icon: safe zone is central 80% — keep all content inside a centred circle of r≈205px -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#07071a"/>
+  <!-- Rings -->
+  <circle cx="256" cy="256" r="168" fill="none" stroke="#7c6bff" stroke-width="2" opacity="0.35"/>
+  <!-- Main circle -->
+  <circle cx="256" cy="256" r="138" fill="none" stroke="#7c6bff" stroke-width="6"/>
+  <circle cx="256" cy="256" r="126" fill="url(#gradM)"/>
+  <defs>
+    <radialGradient id="gradM" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#a89cff" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#7c6bff" stop-opacity="0.15"/>
+    </radialGradient>
+  </defs>
+  <circle cx="256" cy="256" r="14" fill="#a89cff" opacity="0.9"/>
+</svg>
