@@ -79,7 +79,8 @@ canvas {
   line-height: 1.05;
   letter-spacing: 0.04em;
   margin-bottom: 1.25rem;
-  animation: welcomeTextLifecycle 5.5s ease forwards;
+  opacity: 0;
+  animation: loginFadeInUp 0.7s ease forwards;
 }
 .brand-title span { color: var(--primary); font-style: italic; }
 
@@ -87,7 +88,8 @@ canvas {
   color: var(--text-dim);
   font-size: clamp(0.9rem, 2.5vw, 1.05rem);
   margin-bottom: 2.75rem;
-  animation: welcomeTextLifecycle 5.5s 0.15s ease forwards;
+  opacity: 0;
+  animation: loginFadeInUp 0.7s 0.15s ease forwards;
 }
 
 .btn-github {
@@ -330,22 +332,45 @@ body.is-fullscreen .btn-fullscreen .icon-fs-exit  { display: block; }
 }
 .btn-link:hover { color: var(--text); }
 
-/* ── Loading ───────────────────────────────────────────────────────────── */
+/* ── Loading modal overlay ─────────────────────────────────────────────── */
 .loading {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.9rem;
-  color: var(--text-dim);
-  font-size: 0.95rem;
+  justify-content: center;
+  gap: 1.4rem;
+  background: rgba(7, 7, 26, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.loading-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+  background: rgba(18, 16, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.25rem;
+  padding: 2.25rem 2.75rem;
+  min-width: 260px;
+  text-align: center;
 }
 .loading-ring {
-  width: 22px; height: 22px;
-  border: 2px solid transparent;
+  width: 38px; height: 38px;
+  border: 2.5px solid rgba(124, 107, 255, 0.2);
   border-top-color: var(--primary);
   border-right-color: var(--primary);
   border-radius: 50%;
   animation: spin 0.75s linear infinite;
   flex-shrink: 0;
+}
+.loading-label {
+  color: var(--text-dim);
+  font-size: 1rem;
+  letter-spacing: 0.02em;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
